@@ -6,7 +6,7 @@ Anthropic Messages API 兼容的搜索服务器
 它实现了 Anthropic Messages API 协议，支持 web_search_20250305 server tool。
 
 启动方式:
-    python3 web_search_server.py [--port 8000] [--api-key your-key]
+    python3 web_search_server.py [--port 18923] [--api-key your-key]
 
 环境变量:
     DEEPSEEK_API_KEY  - API 密钥（可选）
@@ -25,7 +25,7 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 from typing import Any
 
 # 默认配置
-DEFAULT_PORT = 8000
+DEFAULT_PORT = 18923
 DEFAULT_API_KEY = os.environ.get("DEEPSEEK_API_KEY", "")
 USE_MOCK = os.environ.get("USE_MOCK_RESULTS", "true").lower() == "true"
 
