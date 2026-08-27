@@ -11,7 +11,6 @@ Anthropic Messages API 兼容的搜索服务器
 环境变量:
     DEEPSEEK_API_KEY  - API 密钥（可选）
     SEARCH_SERVER_PORT - 端口号，默认 8000
-    USE_MOCK_RESULTS  - 使用模拟结果（默认 true）
 """
 
 import argparse
@@ -27,7 +26,6 @@ from typing import Any
 # 默认配置
 DEFAULT_PORT = 18923
 DEFAULT_API_KEY = os.environ.get("DEEPSEEK_API_KEY", "")
-USE_MOCK = os.environ.get("USE_MOCK_RESULTS", "true").lower() == "true"
 
 
 class SearchRequestHandler(BaseHTTPRequestHandler):
@@ -86,8 +84,7 @@ class SearchRequestHandler(BaseHTTPRequestHandler):
                 self._send_json_response(200, {
                     "total_requests": len(self.request_log),
                     "api_key_set": bool(getattr(self.server, "api_key", "")),
-                    "endpoint": "/messages",
-                    "use_mock": USE_MOCK
+                    "endpoint": "/messages"
                 })
         else:
             self._send_json_response(404, {"error": "Not found"})
@@ -162,11 +159,7 @@ class SearchRequestHandler(BaseHTTPRequestHandler):
 
         # 执行搜索
         max_uses = search_tool.get("max_uses", 5)
-        
-        if USE_MOCK:
-            results = self._generate_mock_results(query, max_uses)
-        else:
-            results = self._perform_real_search(query, max_uses)
+        results = self._perform_real_search(query, max_uses)
 
         # 构建响应
         return self._build_search_response(results, query)
@@ -235,29 +228,7 @@ class SearchRequestHandler(BaseHTTPRequestHandler):
             
         except Exception as e:
             print(f"[SearchServer] Real search failed: {e}", file=sys.stderr, flush=True)
-            return self._generate_mock_results(query, max_results)
-
-    def _generate_mock_results(self, query: str, max_results: int) -> list[dict[str, Any]]:
-        """生成模拟搜索结果"""
-        mock_data = [
-            ("https://docs.python.org/3/tutorial/", "Python Tutorial", "Learn Python, the hard way. This is a tutorial about Python."),
-            ("https://wiki.python.org/moin/BeginnersGuide", "BeginnersGuide - Python Wiki", "Python wiki for beginners. Learn the basics of Python programming."),
-            ("https://realpython.com/start-here/", "Start Here - Real Python", "A comprehensive guide to getting started with Python programming."),
-            ("https://learnpython.org/", "Learn Python Interactively", "Free interactive Python tutorials for beginners and experts."),
-            ("https://www.python.org/about/gettingstarted/", "Python Getting Started", "Official Python documentation for getting started."),
-        ]
-        
-        results = []
-        for i in range(min(max_results, len(mock_data))):
-            url, title, snippet = mock_data[i]
-            results.append({
-                "url": url,
-                "title": title,
-                "snippet": snippet,
-                "page_age": "2026-01-01" if i % 2 == 0 else None
-            })
-        
-        return results
+            return []
 
     def _build_search_response(self, results: list[dict[str, Any]], query: str) -> dict[str, Any]:
         """构建 Anthropic Messages API 格式的响应"""
@@ -315,22 +286,16 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Anthropic-compatible Web Search Server")
     parser.add_argument("--port", type=int, default=DEFAULT_PORT, help=f"Port to listen on (default: {DEFAULT_PORT})")
     parser.add_argument("--api-key", type=str, default=None, help="API key for authentication")
-    parser.add_argument("--no-mock", action="store_true", help="Disable mock results and use real search")
     args = parser.parse_args()
 
     port = args.port
     api_key = args.api_key or DEFAULT_API_KEY
-    
-    if args.no_mock:
-        global USE_MOCK
-        USE_MOCK = False
 
     server = HTTPServer(("0.0.0.0", port), SearchRequestHandler)
     server.api_key = api_key
 
     print(f"[SearchServer] Starting on http://0.0.0.0:{port}", flush=True)
     print(f"[SearchServer] API key {'set' if api_key else 'not set'}", flush=True)
-    print(f"[SearchServer] Mock results: {USE_MOCK}", flush=True)
     print(f"[SearchServer] Endpoints:", flush=True)
     print(f"  POST /messages  - Search endpoint (Anthropic Messages API)", flush=True)
     print(f"  GET  /health    - Health check", flush=True)
