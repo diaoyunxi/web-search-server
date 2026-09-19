@@ -212,13 +212,13 @@ class SearchRequestHandler(BaseHTTPRequestHandler):
             links = re.findall(link_pattern, html)
             snippets = re.findall(snippet_pattern, html)
             
-            for i, (link, title) in enumerate(links[:max_results]):
-                link = re.sub(r"uddg=([^&]+).*", r"\1", link)
-                link = urllib.parse.unquote(link)
+            for i, (raw_link, title) in enumerate(links[:max_results]):
+                cleaned_link = re.sub(r"uddg=([^&]+).*", r"\1", raw_link)
+                final_url = urllib.parse.unquote(cleaned_link)
                 snippet = snippets[i] if i < len(snippets) else ""
                 
                 results.append({
-                    "url": link,
+                    "url": final_url,
                     "title": title.strip(),
                     "snippet": snippet.strip(),
                     "page_age": None
