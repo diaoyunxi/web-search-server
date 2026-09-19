@@ -21,7 +21,7 @@ import sys
 import time
 import threading
 from http.server import HTTPServer, BaseHTTPRequestHandler
-from typing import Any
+from typing import Any, ClassVar
 
 # 默认配置
 DEFAULT_PORT = 18923
@@ -32,8 +32,8 @@ class SearchRequestHandler(BaseHTTPRequestHandler):
     """处理搜索请求的 HTTP 处理器"""
 
     # 存储请求历史
-    request_log: list[dict[str, Any]] = []
-    log_lock = threading.Lock()
+    request_log: ClassVar[list[dict[str, Any]]] = []
+    log_lock: ClassVar[threading.Lock] = threading.Lock()
 
     def log_message(self, format: str, *args: Any) -> None:
         """覆盖默认日志输出"""
@@ -212,13 +212,13 @@ class SearchRequestHandler(BaseHTTPRequestHandler):
             links = re.findall(link_pattern, html)
             snippets = re.findall(snippet_pattern, html)
             
-            for i, (link, title) in enumerate(links[:max_results]):
-                link = re.sub(r"uddg=([^&]+).*", r"\1", link)
-                link = urllib.parse.unquote(link)
+            for i, (raw_link, title) in enumerate(links[:max_results]):
+                cleaned_link = re.sub(r"uddg=([^&]+).*", r"\1", raw_link)
+                final_url = urllib.parse.unquote(cleaned_link)
                 snippet = snippets[i] if i < len(snippets) else ""
                 
                 results.append({
-                    "url": link,
+                    "url": final_url,
                     "title": title.strip(),
                     "snippet": snippet.strip(),
                     "page_age": None
