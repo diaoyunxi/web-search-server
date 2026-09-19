@@ -35,7 +35,7 @@ class SearchRequestHandler(BaseHTTPRequestHandler):
     request_log: list[dict[str, Any]] = []
     log_lock = threading.Lock()
 
-    def log_message(self, format: str, *args: Any) -> None:
+    def log_message(self, fmt: str, *args: Any) -> None:
         """覆盖默认日志输出"""
         print(f"[SearchServer] {args[0]}", file=sys.stderr, flush=True)
 
@@ -291,14 +291,14 @@ def main() -> None:
     port = args.port
     api_key = args.api_key or DEFAULT_API_KEY
 
-    server = HTTPServer(("0.0.0.0", port), SearchRequestHandler)
+    server = HTTPServer(("127.0.0.1", port), SearchRequestHandler)
     server.api_key = api_key
 
-    print(f"[SearchServer] Starting on http://0.0.0.0:{port}", flush=True)
+    print(f"[SearchServer] Starting on http://127.0.0.1:{port}", flush=True)
     print(f"[SearchServer] API key {'set' if api_key else 'not set'}", flush=True)
     print(f"[SearchServer] Endpoints:", flush=True)
-    print(f"  POST /messages  - Search endpoint (Anthropic Messages API)", flush=True)
-    print(f"  GET  /health    - Health check", flush=True)
+    print("  POST /messages  - Search endpoint (Anthropic Messages API)", flush=True)
+    print("  GET  /health    - Health check", flush=True)
     print(f"  GET  /log       - Request log", flush=True)
     print(f"  GET  /stats     - Server stats", flush=True)
     print()
