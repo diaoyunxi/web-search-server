@@ -205,12 +205,33 @@ class SearchRequestHandler(BaseHTTPRequestHandler):
                 html = response.read().decode("utf-8", errors="ignore")
             
             results = []
-            # 解析搜索结果
-            link_pattern = r'<a class="result__a" href="(https?://[^"]+)"[^>]*>([^<]+)</a>'
-            snippet_pattern = r'<a class="result__snippet"[^>]*>([^<]+)</a>'
+            # 解析搜索结果（多模式匹配，增强对不同 HTML 结构的兼容性）
+            link_patterns = [
+                r'<a class="result__a" href="(https?://[^"]+)"[^>]*>([^<]+)</a>',
+                r'<a[^>]+class="result__a"[^>]+href="(https?://[^"]+)"[^>]*>([^<]+)</a>',
+                r'<a[^>]+href="(https?://[^"]+)"[^>]+class="result__a"[^>]*>([^<]+)</a>',
+            ]
+            snippet_patterns = [
+                r'<a class="result__snippet"[^>]*>([^<]+)</a>',
+                r'<span class="result__snippet"[^>]*>([^<]+)</span>',
+                r'class="result__snippet"[^>]*>([^<]+)<',
+            ]
             
-            links = re.findall(link_pattern, html)
-            snippets = re.findall(snippet_pattern, html)
+            links = []
+            for lp in link_patterns:
+                links = re.findall(lp, html)
+                if links:
+                    break
+            
+            snippets = []
+            for sp in snippet_patterns:
+                snippets = re.findall(sp, html)
+                if snippets:
+                    break
+            
+            if not links:
+                print(f"[SearchServer] WARNING: DuckDuckGo parser returned 0 results for query '{query}'. "
+                      f"HTML structure may have changed. HTML length: {len(html)}", file=sys.stderr, flush=True)
             
             for i, (raw_link, title) in enumerate(links[:max_results]):
                 cleaned_link = re.sub(r"uddg=([^&]+).*", r"\1", raw_link)
@@ -274,8 +295,8 @@ class SearchRequestHandler(BaseHTTPRequestHandler):
             "stop_reason": "end_turn",
             "stop_sequence": None,
             "usage": {
-                "input_tokens": len(query.split()),
-                "output_tokens": len(citations)
+                "input_tokens": max(1, len(query) // 4),
+                "output_tokens": max(1, sum(len(c.get("cited_text", "")) for c in citations) // 4 + len(results) * 50)
             }
         }
         
