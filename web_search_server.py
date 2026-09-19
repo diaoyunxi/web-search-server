@@ -14,6 +14,7 @@ Anthropic Messages API 兼容的搜索服务器
 """
 
 import argparse
+import hmac
 import json
 import os
 import re
@@ -31,9 +32,15 @@ DEFAULT_API_KEY = os.environ.get("DEEPSEEK_API_KEY", "")
 class SearchRequestHandler(BaseHTTPRequestHandler):
     """处理搜索请求的 HTTP 处理器"""
 
-    # 存储请求历史
-    request_log: list[dict[str, Any]] = []
+    # 存储请求历史（使用 threading.Lock 保护，在 __init__ 中初始化实例属性）
     log_lock = threading.Lock()
+    request_log: list[dict[str, Any]]
+
+    def __init__(self, *args, **kwargs):
+        if not hasattr(type(self), '_class_log_initialized'):
+            type(self).request_log = []
+            type(self)._class_log_initialized = True
+        super().__init__(*args, **kwargs)
 
     def log_message(self, format: str, *args: Any) -> None:
         """覆盖默认日志输出"""
@@ -48,13 +55,13 @@ class SearchRequestHandler(BaseHTTPRequestHandler):
         self.wfile.write(json.dumps(data, ensure_ascii=False, indent=2).encode("utf-8"))
 
     def _check_auth(self) -> bool:
-        """检查 API 密钥认证"""
+        """检查 API 密钥认证（使用恒定时间比较防止时序攻击）"""
         api_key = self.headers.get("X-Api-Key", "") or self.headers.get("Authorization", "").replace("Bearer ", "")
         required_key = getattr(self.server, "api_key", "")
 
         if not required_key:
             return True  # 未设置密钥时允许所有请求
-        return api_key == required_key
+        return hmac.compare_digest(api_key, required_key)
 
     def do_OPTIONS(self) -> None:
         """处理 CORS 预检请求"""
