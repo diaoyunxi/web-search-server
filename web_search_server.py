@@ -26,6 +26,14 @@ from typing import Any
 # 默认配置
 DEFAULT_PORT = 18923
 DEFAULT_API_KEY = os.environ.get("DEEPSEEK_API_KEY", "")
+# CORS 允许的源：逗号分隔的列表，"*" 表示允许所有（不推荐用于生产环境）
+DEFAULT_ALLOWED_ORIGINS = os.environ.get("ALLOWED_ORIGINS", "*")
+
+
+def _parse_allowed_origins(raw: str) -> set[str]:
+    """解析允许的来源列表，支持逗号分隔。"""
+    origins = {o.strip() for o in raw.split(",") if o.strip()}
+    return origins
 
 
 class SearchRequestHandler(BaseHTTPRequestHandler):
@@ -43,9 +51,26 @@ class SearchRequestHandler(BaseHTTPRequestHandler):
         """发送 JSON 响应"""
         self.send_response(status_code)
         self.send_header("Content-Type", "application/json")
-        self.send_header("Access-Control-Allow-Origin", "*")
+        self._set_cors_headers()
         self.end_headers()
         self.wfile.write(json.dumps(data, ensure_ascii=False, indent=2).encode("utf-8"))
+
+    def _set_cors_headers(self) -> None:
+        """设置 CORS 响应头，根据允许的源列表验证请求来源。
+
+        安全改进：不再无条件返回 Access-Control-Allow-Origin: *，
+        而是检查请求的 Origin 头是否在白名单中。生产环境应避免使用 *。
+        """
+        allowed: set[str] = getattr(self.server, "allowed_origins", {"*"})
+        origin = self.headers.get("Origin", "")
+
+        if "*" in allowed:
+            # 兼容旧行为，但仍建议配置具体源
+            self.send_header("Access-Control-Allow-Origin", "*")
+        elif origin and origin in allowed:
+            self.send_header("Access-Control-Allow-Origin", origin)
+            self.send_header("Vary", "Origin")
+        # 不在白名单时不返回 CORS 头，浏览器将拒绝跨域请求
 
     def _check_auth(self) -> bool:
         """检查 API 密钥认证"""
@@ -59,7 +84,7 @@ class SearchRequestHandler(BaseHTTPRequestHandler):
     def do_OPTIONS(self) -> None:
         """处理 CORS 预检请求"""
         self.send_response(200)
-        self.send_header("Access-Control-Allow-Origin", "*")
+        self._set_cors_headers()
         self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
         self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Api-Key, anthropic-version")
         self.end_headers()
@@ -286,21 +311,29 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Anthropic-compatible Web Search Server")
     parser.add_argument("--port", type=int, default=DEFAULT_PORT, help=f"Port to listen on (default: {DEFAULT_PORT})")
     parser.add_argument("--api-key", type=str, default=None, help="API key for authentication")
+    parser.add_argument(
+        "--allowed-origins", type=str, default=DEFAULT_ALLOWED_ORIGINS,
+        help="Comma-separated list of allowed CORS origins (default: '*'). "
+             "Use specific origins (e.g. 'http://localhost:3000,https://myapp.com') in production."
+    )
     args = parser.parse_args()
 
     port = args.port
     api_key = args.api_key or DEFAULT_API_KEY
+    allowed_origins = _parse_allowed_origins(args.allowed_origins)
 
     server = HTTPServer(("0.0.0.0", port), SearchRequestHandler)
     server.api_key = api_key
+    server.allowed_origins = allowed_origins
 
     print(f"[SearchServer] Starting on http://0.0.0.0:{port}", flush=True)
     print(f"[SearchServer] API key {'set' if api_key else 'not set'}", flush=True)
-    print(f"[SearchServer] Endpoints:", flush=True)
-    print(f"  POST /messages  - Search endpoint (Anthropic Messages API)", flush=True)
-    print(f"  GET  /health    - Health check", flush=True)
-    print(f"  GET  /log       - Request log", flush=True)
-    print(f"  GET  /stats     - Server stats", flush=True)
+    print(f"[SearchServer] CORS allowed origins: {', '.join(sorted(allowed_origins))}", flush=True)
+    print("[SearchServer] Endpoints:", flush=True)
+    print("  POST /messages  - Search endpoint (Anthropic Messages API)", flush=True)
+    print("  GET  /health    - Health check", flush=True)
+    print("  GET  /log       - Request log", flush=True)
+    print("  GET  /stats     - Server stats", flush=True)
     print()
 
     try:
