@@ -124,7 +124,7 @@ class SearchRequestHandler(BaseHTTPRequestHandler):
         try:
             response = self._handle_search_request(request_data)
             self._send_json_response(200, response)
-        except Exception as e:
+        except (OSError, ValueError, RuntimeError, ConnectionError, TimeoutError) as e:
             print(f"[SearchServer] Error handling request: {e}", file=sys.stderr, flush=True)
             self._send_json_response(500, {"error": str(e)})
 
@@ -226,7 +226,7 @@ class SearchRequestHandler(BaseHTTPRequestHandler):
             
             return results
             
-        except Exception as e:
+        except (OSError, ValueError, RuntimeError, ConnectionError, TimeoutError) as e:
             print(f"[SearchServer] Real search failed: {e}", file=sys.stderr, flush=True)
             return []
 
