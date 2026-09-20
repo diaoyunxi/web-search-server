@@ -204,6 +204,10 @@ class SearchRequestHandler(BaseHTTPRequestHandler):
             import urllib.parse
             
             encoded_query = urllib.parse.quote(query)
+            
+            # 安全校验：仅允许 https 协议
+            if not url.startswith("https://"):
+                return []
             url = f"https://html.duckduckgo.com/html/?q={encoded_query}"
             
             req = urllib.request.Request(
