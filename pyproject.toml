@@ -1,0 +1,14 @@
+[project]
+name = "web-search-server"
+version = "0.1.0"
+description = "Anthropic Messages API compatible web search server"
+requires-python = ">=3.9"
+dependencies = [
+    "duckduckgo-search>=6.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "ruff>=0.1.0",
+    "pytest>=7.0.0",
+]
