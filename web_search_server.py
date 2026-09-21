@@ -193,6 +193,11 @@ class SearchRequestHandler(BaseHTTPRequestHandler):
             encoded_query = urllib.parse.quote(query)
             url = f"https://html.duckduckgo.com/html/?q={encoded_query}"
             
+            # S310: 校验 URL scheme 仅允许 http/https，防止 file:// 等危险协议
+            parsed = urllib.parse.urlparse(url)
+            if parsed.scheme not in ("http", "https"):
+                return []
+            
             req = urllib.request.Request(
                 url,
                 headers={
@@ -291,10 +296,10 @@ def main() -> None:
     port = args.port
     api_key = args.api_key or DEFAULT_API_KEY
 
-    server = HTTPServer(("0.0.0.0", port), SearchRequestHandler)
+    server = HTTPServer(("127.0.0.1", port), SearchRequestHandler)
     server.api_key = api_key
 
-    print(f"[SearchServer] Starting on http://0.0.0.0:{port}", flush=True)
+    print(f"[SearchServer] Starting on http://127.0.0.1:{port}", flush=True)
     print(f"[SearchServer] API key {'set' if api_key else 'not set'}", flush=True)
     print(f"[SearchServer] Endpoints:", flush=True)
     print(f"  POST /messages  - Search endpoint (Anthropic Messages API)", flush=True)
