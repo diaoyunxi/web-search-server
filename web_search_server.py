@@ -110,7 +110,7 @@ class SearchRequestHandler(BaseHTTPRequestHandler):
             self._send_json_response(400, {"error": "Invalid JSON"})
             return
 
-        # 记录请求
+        # 记录请求（线程安全，限制最大存储 200 条防止内存泄漏）
         with self.log_lock:
             self.request_log.append({
                 "timestamp": time.time(),
@@ -119,6 +119,9 @@ class SearchRequestHandler(BaseHTTPRequestHandler):
                 "headers": dict(self.headers),
                 "body": request_data
             })
+            # 防止 request_log 无限增长导致内存泄漏
+            if len(self.request_log) > 200:
+                self.request_log = self.request_log[-100:]
 
         # 处理请求
         try:
@@ -291,10 +294,11 @@ def main() -> None:
     port = args.port
     api_key = args.api_key or DEFAULT_API_KEY
 
-    server = HTTPServer(("0.0.0.0", port), SearchRequestHandler)
+    bind_host = os.environ.get("SEARCH_SERVER_HOST", "127.0.0.1")
+    server = HTTPServer((bind_host, port), SearchRequestHandler)
     server.api_key = api_key
 
-    print(f"[SearchServer] Starting on http://0.0.0.0:{port}", flush=True)
+    print(f"[SearchServer] Starting on http://{bind_host}:{port}", flush=True)
     print(f"[SearchServer] API key {'set' if api_key else 'not set'}", flush=True)
     print(f"[SearchServer] Endpoints:", flush=True)
     print(f"  POST /messages  - Search endpoint (Anthropic Messages API)", flush=True)
