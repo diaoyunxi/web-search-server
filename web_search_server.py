@@ -27,6 +27,11 @@ from typing import Any
 DEFAULT_PORT = 18923
 DEFAULT_API_KEY = os.environ.get("DEEPSEEK_API_KEY", "")
 
+# 请求日志最大条目数，防止长期运行时内存无限增长 (CWE-770)
+MAX_REQUEST_LOG = 200
+# POST 请求体最大大小（1 MB），防止大请求导致 DoS (CWE-770)
+MAX_BODY_SIZE = 1 * 1024 * 1024
+
 
 class SearchRequestHandler(BaseHTTPRequestHandler):
     """处理搜索请求的 HTTP 处理器"""
@@ -100,8 +105,11 @@ class SearchRequestHandler(BaseHTTPRequestHandler):
             self._send_json_response(401, {"error": "Unauthorized"})
             return
 
-        # 读取请求体
+        # 读取请求体 — 校验 Content-Length 防止超大请求 DoS (CWE-770)
         content_length = int(self.headers.get("Content-Length", 0))
+        if content_length > MAX_BODY_SIZE:
+            self._send_json_response(413, {"error": f"Request body too large (max {MAX_BODY_SIZE} bytes)"})
+            return
         body = self.rfile.read(content_length)
 
         try:
@@ -110,7 +118,7 @@ class SearchRequestHandler(BaseHTTPRequestHandler):
             self._send_json_response(400, {"error": "Invalid JSON"})
             return
 
-        # 记录请求
+        # 记录请求 — 限制日志条目数防止内存无限增长 (CWE-770)
         with self.log_lock:
             self.request_log.append({
                 "timestamp": time.time(),
@@ -119,6 +127,9 @@ class SearchRequestHandler(BaseHTTPRequestHandler):
                 "headers": dict(self.headers),
                 "body": request_data
             })
+            # 超出上限时丢弃最旧的条目
+            if len(self.request_log) > MAX_REQUEST_LOG:
+                self.request_log = self.request_log[-MAX_REQUEST_LOG:]
 
         # 处理请求
         try:
