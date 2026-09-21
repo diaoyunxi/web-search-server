@@ -6,15 +6,14 @@
 
 - ✅ 完全兼容 Anthropic Messages API 格式
 - ✅ 支持 `web_search_20250305` server tool
-- ✅ 模拟搜索结果（默认）
-- ✅ 真实搜索（DuckDuckGo、Serper、Exa、Google、Brave）
+- ✅ 真实搜索（DuckDuckGo）
 - ✅ API 密钥认证
 - ✅ CORS 支持
 - ✅ 请求日志和统计
 
 ## 快速开始
 
-### 启动服务器（使用模拟数据）
+### 启动服务器
 
 ```bash
 # 基本启动
@@ -27,23 +26,13 @@ python3 web_search_server.py --port 8080
 python3 web_search_server.py --api-key my-secret-key
 ```
 
-### 启动服务器（使用真实搜索）
+### 真实搜索
+
+服务器默认使用 DuckDuckGo 进行真实搜索，无需额外配置或 API key。
 
 ```bash
-# 使用 DuckDuckGo（无需 API key）
-USE_MOCK_RESULTS=false python3 web_search_server.py --no-mock
-
-# 使用 Serper.dev（Google Search API）
-SEARCH_API_KEY=your-serper-key SEARCH_ENGINE=serper python3 web_search_server.py --no-mock
-
-# 使用 Exa API
-SEARCH_API_KEY=your-exa-key SEARCH_ENGINE=exa python3 web_search_server.py --no-mock
-
-# 使用 Google Custom Search API
-SEARCH_API_KEY=your-google-key SEARCH_ENGINE=google GOOGLE_CX=your-cx python3 web_search_server.py --no-mock
-
-# 使用 Brave Search API
-SEARCH_API_KEY=your-brave-key SEARCH_ENGINE=brave python3 web_search_server.py --no-mock
+# 直接启动即可使用真实搜索（DuckDuckGo）
+python3 web_search_server.py
 ```
 
 ## API 端点
@@ -129,17 +118,8 @@ SEARCH_API_KEY=your-brave-key SEARCH_ENGINE=brave python3 web_search_server.py -
 | 变量 | 说明 | 默认值 |
 |------|------|--------|
 | `DEEPSEEK_API_KEY` | API 密钥 | 空 |
-| `SEARCH_SERVER_PORT` | 端口号 | 8000 |
-| `USE_MOCK_RESULTS` | 使用模拟结果 | true |
-| `SEARCH_API_KEY` | 搜索 API 密钥 | 空 |
-| `SEARCH_ENGINE` | 搜索引擎 | duckduckgo |
 
-支持的搜索引擎：
-- `duckduckgo` - 无需 API key
-- `serper` - Serper.dev (Google)
-- `exa` - Exa AI
-- `google` - Google Custom Search
-- `brave` - Brave Search
+> **注意**：服务器默认监听端口为 18923，可通过 `--port` 参数修改。
 
 ## 与 deepseek-harness 集成
 
@@ -194,13 +174,9 @@ export DEEPSEEK_API_KEY=my-secret-key
 
 ## 开发说明
 
-### 添加新的搜索引擎
+### 搜索实现
 
-在 `_perform_real_search` 方法中添加新的搜索实现，或在 `_search_<engine>` 方法中添加具体实现。
-
-### 修改模拟数据
-
-编辑 `_generate_mock_results` 方法中的 `mock_data` 列表。
+服务器使用 `_perform_real_search` 方法调用 DuckDuckGo HTML API 进行搜索。如需添加其他搜索引擎支持，可在该方法中扩展。
 
 ## 许可证
 
