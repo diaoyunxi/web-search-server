@@ -44,6 +44,10 @@ class SearchRequestHandler(BaseHTTPRequestHandler):
         self.send_response(status_code)
         self.send_header("Content-Type", "application/json")
         self.send_header("Access-Control-Allow-Origin", "*")
+        # 安全响应头 — 防止常见 Web 攻击
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.send_header("X-Frame-Options", "DENY")
+        self.send_header("Cache-Control", "no-store")
         self.end_headers()
         self.wfile.write(json.dumps(data, ensure_ascii=False, indent=2).encode("utf-8"))
 
@@ -212,8 +216,8 @@ class SearchRequestHandler(BaseHTTPRequestHandler):
             links = re.findall(link_pattern, html)
             snippets = re.findall(snippet_pattern, html)
             
-            for i, (link, title) in enumerate(links[:max_results]):
-                link = re.sub(r"uddg=([^&]+).*", r"\1", link)
+            for i, (raw_link, title) in enumerate(links[:max_results]):
+                link = re.sub(r"uddg=([^&]+).*", r"\1", raw_link)
                 link = urllib.parse.unquote(link)
                 snippet = snippets[i] if i < len(snippets) else ""
                 
@@ -291,10 +295,10 @@ def main() -> None:
     port = args.port
     api_key = args.api_key or DEFAULT_API_KEY
 
-    server = HTTPServer(("0.0.0.0", port), SearchRequestHandler)
+    server = HTTPServer(("127.0.0.1", port), SearchRequestHandler)
     server.api_key = api_key
 
-    print(f"[SearchServer] Starting on http://0.0.0.0:{port}", flush=True)
+    print(f"[SearchServer] Starting on http://127.0.0.1:{port}", flush=True)
     print(f"[SearchServer] API key {'set' if api_key else 'not set'}", flush=True)
     print(f"[SearchServer] Endpoints:", flush=True)
     print(f"  POST /messages  - Search endpoint (Anthropic Messages API)", flush=True)
