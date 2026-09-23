@@ -1,31 +1,11 @@
-# Dependencies
-node_modules/
-vendor/
-
-# IDE
-.idea/
-.vscode/
-*.swp
-*.swo
-*~
-
-# OS
+__pycache__/
+*.pyc
+*.pyo
+.env
+*.log
 .DS_Store
-Thumbs.db
-
-# Build
+venv/
+.venv/
 dist/
 build/
-*.pyc
-__pycache__/
-
-# Environment
-.env
-.env.local
-
-# Logs
-*.log
-
-# Coverage
-.coverage
-htmlcov/
+*.egg-info/
