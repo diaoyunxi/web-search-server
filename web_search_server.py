@@ -10,7 +10,7 @@ Anthropic Messages API 兼容的搜索服务器
 
 环境变量:
     DEEPSEEK_API_KEY  - API 密钥（可选）
-    SEARCH_SERVER_PORT - 端口号，默认 8000
+    SEARCH_SERVER_PORT - 端口号，默认 18923
 """
 
 import argparse
