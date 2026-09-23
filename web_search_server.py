@@ -165,23 +165,47 @@ class SearchRequestHandler(BaseHTTPRequestHandler):
         return self._build_search_response(results, query)
 
     def _extract_query(self, messages: list) -> str:
-        """从消息中提取搜索查询"""
-        for msg in messages:
-            if msg.get("role") == "user":
-                content = msg.get("content", [])
-                if isinstance(content, str):
-                    match = re.search(r"Perform a web search for the query: (.+)", content)
-                    if match:
-                        return match.group(1)
-                    return content
-                elif isinstance(content, list):
-                    for item in content:
-                        if isinstance(item, dict) and item.get("type") == "text":
-                            text = item.get("text", "")
-                            match = re.search(r"Perform a web search for the query: (.+)", text)
-                            if match:
-                                return match.group(1)
-                            return text
+        """从消息中提取搜索查询
+
+        优先使用最新的用户消息，并支持显式搜索查询模式。
+        如果找不到有效的搜索查询，返回空字符串而非原始消息文本，
+        避免将普通对话消息误当作搜索查询。
+        """
+        # 从最新消息开始向后搜索，优先匹配显式搜索查询模式
+        for msg in reversed(messages):
+            if msg.get("role") != "user":
+                continue
+            content = msg.get("content", [])
+            texts = []
+            if isinstance(content, str):
+                texts = [content]
+            elif isinstance(content, list):
+                texts = [
+                    item.get("text", "")
+                    for item in content
+                    if isinstance(item, dict) and item.get("type") == "text"
+                ]
+            for text in texts:
+                # 显式搜索查询模式
+                match = re.search(r"Perform a web search for the query: (.+)", text)
+                if match:
+                    return match.group(1).strip()
+
+        # 回退：使用最新的用户消息作为搜索查询（而非第一条）
+        for msg in reversed(messages):
+            if msg.get("role") != "user":
+                continue
+            content = msg.get("content", [])
+            if isinstance(content, str):
+                stripped = content.strip()
+                if stripped:
+                    return stripped
+            elif isinstance(content, list):
+                for item in content:
+                    if isinstance(item, dict) and item.get("type") == "text":
+                        stripped = item.get("text", "").strip()
+                        if stripped:
+                            return stripped
         return ""
 
     def _perform_real_search(self, query: str, max_results: int) -> list[dict[str, Any]]:
