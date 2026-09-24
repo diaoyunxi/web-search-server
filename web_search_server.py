@@ -21,7 +21,7 @@ import sys
 import time
 import threading
 from http.server import HTTPServer, BaseHTTPRequestHandler
-from typing import Any
+from typing import Any, ClassVar
 
 # 默认配置
 DEFAULT_PORT = 18923
@@ -32,8 +32,8 @@ class SearchRequestHandler(BaseHTTPRequestHandler):
     """处理搜索请求的 HTTP 处理器"""
 
     # 存储请求历史
-    request_log: list[dict[str, Any]] = []
-    log_lock = threading.Lock()
+    request_log: ClassVar[list[dict[str, Any]]] = []
+    log_lock: ClassVar[threading.Lock] = threading.Lock()
 
     def log_message(self, format: str, *args: Any) -> None:
         """覆盖默认日志输出"""
