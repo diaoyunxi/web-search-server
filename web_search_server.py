@@ -32,8 +32,21 @@ class SearchRequestHandler(BaseHTTPRequestHandler):
     """处理搜索请求的 HTTP 处理器"""
 
     # 存储请求历史
-    request_log: list[dict[str, Any]] = []
+    request_log: list[dict[str, Any]]
     log_lock = threading.Lock()
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.request_log = []
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.request_log = []
+    log_lock = threading.Lock()
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.request_log = []
 
     def log_message(self, format: str, *args: Any) -> None:
         """覆盖默认日志输出"""
@@ -126,7 +139,7 @@ class SearchRequestHandler(BaseHTTPRequestHandler):
             self._send_json_response(200, response)
         except Exception as e:
             print(f"[SearchServer] Error handling request: {e}", file=sys.stderr, flush=True)
-            self._send_json_response(500, {"error": str(e)})
+            self._send_json_response(500, {"error": "Internal server error"})
 
     def _handle_search_request(self, request_data: dict[str, Any]) -> dict[str, Any]:
         """处理搜索请求"""
@@ -191,6 +204,10 @@ class SearchRequestHandler(BaseHTTPRequestHandler):
             import urllib.parse
             
             encoded_query = urllib.parse.quote(query)
+            
+            # 安全校验：仅允许 https 协议
+            if not url.startswith("https://"):
+                return []
             url = f"https://html.duckduckgo.com/html/?q={encoded_query}"
             
             req = urllib.request.Request(
