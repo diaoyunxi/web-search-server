@@ -31,9 +31,10 @@ DEFAULT_API_KEY = os.environ.get("DEEPSEEK_API_KEY", "")
 class SearchRequestHandler(BaseHTTPRequestHandler):
     """处理搜索请求的 HTTP 处理器"""
 
-    # 存储请求历史
+    # 存储请求历史（限制最大条数防止内存无限增长）
     request_log: list[dict[str, Any]] = []
     log_lock = threading.Lock()
+    MAX_LOG_ENTRIES = 1000  # 最多保留 1000 条请求日志
 
     def log_message(self, format: str, *args: Any) -> None:
         """覆盖默认日志输出"""
@@ -119,6 +120,9 @@ class SearchRequestHandler(BaseHTTPRequestHandler):
                 "headers": dict(self.headers),
                 "body": request_data
             })
+            # 限制日志大小，防止内存无限增长
+            if len(self.request_log) > self.MAX_LOG_ENTRIES:
+                self.request_log = self.request_log[-self.MAX_LOG_ENTRIES:]
 
         # 处理请求
         try:
