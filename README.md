@@ -21,7 +21,7 @@
 python3 web_search_server.py
 
 # 指定端口
-python3 web_search_server.py --port 8080
+python3 web_search_server.py --port 18923
 
 # 设置 API 密钥
 python3 web_search_server.py --api-key my-secret-key
@@ -129,7 +129,7 @@ SEARCH_API_KEY=your-brave-key SEARCH_ENGINE=brave python3 web_search_server.py -
 | 变量 | 说明 | 默认值 |
 |------|------|--------|
 | `DEEPSEEK_API_KEY` | API 密钥 | 空 |
-| `SEARCH_SERVER_PORT` | 端口号 | 8000 |
+| `SEARCH_SERVER_PORT` | 端口号 | 18923 |
 | `USE_MOCK_RESULTS` | 使用模拟结果 | true |
 | `SEARCH_API_KEY` | 搜索 API 密钥 | 空 |
 | `SEARCH_ENGINE` | 搜索引擎 | duckduckgo |
@@ -151,14 +151,14 @@ SEARCH_API_KEY=your-brave-key SEARCH_ENGINE=brave python3 web_search_server.py -
 - id: web-search-deepseek
   name: '@deepseek-ai/dsh-web-search-deepseek'
   config:
-    baseURL: http://localhost:8080  # 指向本地服务器
+    baseURL: http://localhost:18923  # 指向本地服务器
     apiKeyEnv: DEEPSEEK_API_KEY
 ```
 
 或使用环境变量：
 
 ```bash
-export DEEPSEEK_SEARCH_BASE_URL=http://localhost:8080
+export DEEPSEEK_SEARCH_BASE_URL=http://localhost:18923
 export DEEPSEEK_API_KEY=my-secret-key
 ```
 
