@@ -14,6 +14,7 @@ Anthropic Messages API 兼容的搜索服务器
 """
 
 import argparse
+import hmac
 import json
 import os
 import re
@@ -54,7 +55,7 @@ class SearchRequestHandler(BaseHTTPRequestHandler):
 
         if not required_key:
             return True  # 未设置密钥时允许所有请求
-        return api_key == required_key
+        return hmac.compare_digest(api_key, required_key)
 
     def do_OPTIONS(self) -> None:
         """处理 CORS 预检请求"""
@@ -213,12 +214,12 @@ class SearchRequestHandler(BaseHTTPRequestHandler):
             snippets = re.findall(snippet_pattern, html)
             
             for i, (link, title) in enumerate(links[:max_results]):
-                link = re.sub(r"uddg=([^&]+).*", r"\1", link)
-                link = urllib.parse.unquote(link)
+                cleaned_url = re.sub(r"uddg=([^&]+).*", r"\1", link)
+                final_url = urllib.parse.unquote(cleaned_url)
                 snippet = snippets[i] if i < len(snippets) else ""
                 
                 results.append({
-                    "url": link,
+                    "url": final_url,
                     "title": title.strip(),
                     "snippet": snippet.strip(),
                     "page_age": None
