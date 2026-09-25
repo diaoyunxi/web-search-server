@@ -33,6 +33,7 @@ class SearchRequestHandler(BaseHTTPRequestHandler):
 
     # 存储请求历史
     request_log: list[dict[str, Any]] = []
+    _MAX_REQUEST_LOG = 200  # 防止无限增长导致 OOM
     log_lock = threading.Lock()
 
     def log_message(self, format: str, *args: Any) -> None:
@@ -112,6 +113,8 @@ class SearchRequestHandler(BaseHTTPRequestHandler):
 
         # 记录请求
         with self.log_lock:
+            if len(self.request_log) >= self._MAX_REQUEST_LOG:
+                self.request_log.pop(0)  # 淘汰最旧记录
             self.request_log.append({
                 "timestamp": time.time(),
                 "method": "POST",
@@ -189,10 +192,10 @@ class SearchRequestHandler(BaseHTTPRequestHandler):
         try:
             import urllib.request
             import urllib.parse
-            
+
             encoded_query = urllib.parse.quote(query)
             url = f"https://html.duckduckgo.com/html/?q={encoded_query}"
-            
+
             req = urllib.request.Request(
                 url,
                 headers={
@@ -200,32 +203,32 @@ class SearchRequestHandler(BaseHTTPRequestHandler):
                     "Accept": "text/html"
                 }
             )
-            
+
             with urllib.request.urlopen(req, timeout=5) as response:
                 html = response.read().decode("utf-8", errors="ignore")
-            
+
             results = []
             # 解析搜索结果
             link_pattern = r'<a class="result__a" href="(https?://[^"]+)"[^>]*>([^<]+)</a>'
             snippet_pattern = r'<a class="result__snippet"[^>]*>([^<]+)</a>'
-            
+
             links = re.findall(link_pattern, html)
             snippets = re.findall(snippet_pattern, html)
-            
+
             for i, (link, title) in enumerate(links[:max_results]):
                 link = re.sub(r"uddg=([^&]+).*", r"\1", link)
                 link = urllib.parse.unquote(link)
                 snippet = snippets[i] if i < len(snippets) else ""
-                
+
                 results.append({
                     "url": link,
                     "title": title.strip(),
                     "snippet": snippet.strip(),
                     "page_age": None
                 })
-            
+
             return results
-            
+
         except Exception as e:
             print(f"[SearchServer] Real search failed: {e}", file=sys.stderr, flush=True)
             return []
@@ -240,7 +243,7 @@ class SearchRequestHandler(BaseHTTPRequestHandler):
                 "url": result["url"],
                 "cited_text": result.get("snippet", "")[:200]
             })
-        
+
         # 构建搜索结果 block
         search_results = []
         for result in results:
@@ -253,7 +256,7 @@ class SearchRequestHandler(BaseHTTPRequestHandler):
             if result.get("page_age"):
                 item["page_age"] = result["page_age"]
             search_results.append(item)
-        
+
         # 构建完整响应
         response = {
             "id": f"msg_{int(time.time())}",
@@ -278,7 +281,7 @@ class SearchRequestHandler(BaseHTTPRequestHandler):
                 "output_tokens": len(citations)
             }
         }
-        
+
         return response
 
 
@@ -296,11 +299,11 @@ def main() -> None:
 
     print(f"[SearchServer] Starting on http://0.0.0.0:{port}", flush=True)
     print(f"[SearchServer] API key {'set' if api_key else 'not set'}", flush=True)
-    print(f"[SearchServer] Endpoints:", flush=True)
-    print(f"  POST /messages  - Search endpoint (Anthropic Messages API)", flush=True)
-    print(f"  GET  /health    - Health check", flush=True)
-    print(f"  GET  /log       - Request log", flush=True)
-    print(f"  GET  /stats     - Server stats", flush=True)
+    print("[SearchServer] Endpoints:", flush=True)
+    print("  POST /messages  - Search endpoint (Anthropic Messages API)", flush=True)
+    print("  GET  /health    - Health check", flush=True)
+    print("  GET  /log       - Request log", flush=True)
+    print("  GET  /stats     - Server stats", flush=True)
     print()
 
     try:
