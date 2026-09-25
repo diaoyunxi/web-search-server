@@ -30,21 +30,11 @@ python3 web_search_server.py --api-key my-secret-key
 ### 启动服务器（使用真实搜索）
 
 ```bash
-# 使用 DuckDuckGo（无需 API key）
-USE_MOCK_RESULTS=false python3 web_search_server.py --no-mock
-
-# 使用 Serper.dev（Google Search API）
-SEARCH_API_KEY=your-serper-key SEARCH_ENGINE=serper python3 web_search_server.py --no-mock
-
-# 使用 Exa API
-SEARCH_API_KEY=your-exa-key SEARCH_ENGINE=exa python3 web_search_server.py --no-mock
-
-# 使用 Google Custom Search API
-SEARCH_API_KEY=your-google-key SEARCH_ENGINE=google GOOGLE_CX=your-cx python3 web_search_server.py --no-mock
-
-# 使用 Brave Search API
-SEARCH_API_KEY=your-brave-key SEARCH_ENGINE=brave python3 web_search_server.py --no-mock
+# 使用 DuckDuckGo（无需 API key，当前唯一支持的搜索引擎）
+python3 web_search_server.py
 ```
+
+> **注意**: 当前版本仅支持 DuckDuckGo HTML 搜索。如需其他搜索引擎（Serper、Google、Exa、Brave），请提交功能请求或自行扩展 `_perform_real_search` 方法。
 
 ## API 端点
 
@@ -128,18 +118,10 @@ SEARCH_API_KEY=your-brave-key SEARCH_ENGINE=brave python3 web_search_server.py -
 
 | 变量 | 说明 | 默认值 |
 |------|------|--------|
-| `DEEPSEEK_API_KEY` | API 密钥 | 空 |
-| `SEARCH_SERVER_PORT` | 端口号 | 8000 |
-| `USE_MOCK_RESULTS` | 使用模拟结果 | true |
-| `SEARCH_API_KEY` | 搜索 API 密钥 | 空 |
-| `SEARCH_ENGINE` | 搜索引擎 | duckduckgo |
+| `DEEPSEEK_API_KEY` | API 密钥（也可通过 `--api-key` 参数设置） | 空 |
 
 支持的搜索引擎：
-- `duckduckgo` - 无需 API key
-- `serper` - Serper.dev (Google)
-- `exa` - Exa AI
-- `google` - Google Custom Search
-- `brave` - Brave Search
+- `duckduckgo` - DuckDuckGo HTML 搜索（无需 API key，当前唯一支持）
 
 ## 与 deepseek-harness 集成
 
@@ -151,7 +133,7 @@ SEARCH_API_KEY=your-brave-key SEARCH_ENGINE=brave python3 web_search_server.py -
 - id: web-search-deepseek
   name: '@deepseek-ai/dsh-web-search-deepseek'
   config:
-    baseURL: http://localhost:8080  # 指向本地服务器
+    baseURL: http://localhost:18923  # 指向本地服务器
     apiKeyEnv: DEEPSEEK_API_KEY
 ```
 
