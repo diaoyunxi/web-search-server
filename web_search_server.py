@@ -174,7 +174,7 @@ class SearchRequestHandler(BaseHTTPRequestHandler):
                     if match:
                         return match.group(1)
                     return content
-                elif isinstance(content, list):
+                if isinstance(content, list):
                     for item in content:
                         if isinstance(item, dict) and item.get("type") == "text":
                             text = item.get("text", "")
@@ -278,8 +278,6 @@ class SearchRequestHandler(BaseHTTPRequestHandler):
                 "output_tokens": len(citations)
             }
         }
-        
-        return response
 
 
 def main() -> None:
