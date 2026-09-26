@@ -294,7 +294,7 @@ def main() -> None:
     server = HTTPServer(("127.0.0.1", port), SearchRequestHandler)
     server.api_key = api_key
 
-    print(f"[SearchServer] Starting on http://0.0.0.0:{port}", flush=True)
+    print(f"[SearchServer] Starting on http://127.0.0.1:{port}", flush=True)
     print(f"[SearchServer] API key {'set' if api_key else 'not set'}", flush=True)
     print(f"[SearchServer] Endpoints:", flush=True)
     print(f"  POST /messages  - Search endpoint (Anthropic Messages API)", flush=True)
