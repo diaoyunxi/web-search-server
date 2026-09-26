@@ -212,6 +212,10 @@ class SearchRequestHandler(BaseHTTPRequestHandler):
             links = re.findall(link_pattern, html)
             snippets = re.findall(snippet_pattern, html)
             
+            if not links:
+                # DuckDuckGo HTML 结构变更时返回空结果，添加日志警告
+                print(f"[SearchServer] 警告: DuckDuckGo 返回 0 条结果，可能 HTML 结构已变更", file=sys.stderr, flush=True)
+
             for i, (link, title) in enumerate(links[:max_results]):
                 link = re.sub(r"uddg=([^&]+).*", r"\1", link)
                 link = urllib.parse.unquote(link)
