@@ -201,6 +201,10 @@ class SearchRequestHandler(BaseHTTPRequestHandler):
                 }
             )
             
+            # S310: validate URL scheme
+            parsed = urllib.parse.urlparse(req.full_url)
+            if parsed.scheme not in ("http", "https"):
+                raise ValueError(f"不允许的 URL 协议: {parsed.scheme}")
             with urllib.request.urlopen(req, timeout=5) as response:
                 html = response.read().decode("utf-8", errors="ignore")
             
@@ -296,11 +300,11 @@ def main() -> None:
 
     print(f"[SearchServer] Starting on http://0.0.0.0:{port}", flush=True)
     print(f"[SearchServer] API key {'set' if api_key else 'not set'}", flush=True)
-    print(f"[SearchServer] Endpoints:", flush=True)
-    print(f"  POST /messages  - Search endpoint (Anthropic Messages API)", flush=True)
-    print(f"  GET  /health    - Health check", flush=True)
-    print(f"  GET  /log       - Request log", flush=True)
-    print(f"  GET  /stats     - Server stats", flush=True)
+    print("[SearchServer] Endpoints:", flush=True)
+    print("  POST /messages  - Search endpoint (Anthropic Messages API)", flush=True)
+    print("  GET  /health    - Health check", flush=True)
+    print("  GET  /log       - Request log", flush=True)
+    print("  GET  /stats     - Server stats", flush=True)
     print()
 
     try:
