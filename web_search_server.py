@@ -31,9 +31,12 @@ DEFAULT_API_KEY = os.environ.get("DEEPSEEK_API_KEY", "")
 class SearchRequestHandler(BaseHTTPRequestHandler):
     """处理搜索请求的 HTTP 处理器"""
 
-    # 存储请求历史
-    request_log: list[dict[str, Any]] = []
     log_lock = threading.Lock()
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        """初始化处理器，将 request_log 作为实例变量避免跨实例污染"""
+        self.request_log: list[dict[str, Any]] = []
+        super().__init__(*args, **kwargs)
 
     def log_message(self, format: str, *args: Any) -> None:
         """覆盖默认日志输出"""
