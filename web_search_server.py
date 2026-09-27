@@ -14,6 +14,7 @@ Anthropic Messages API 兼容的搜索服务器
 """
 
 import argparse
+import hmac
 import json
 import os
 import re
@@ -54,7 +55,7 @@ class SearchRequestHandler(BaseHTTPRequestHandler):
 
         if not required_key:
             return True  # 未设置密钥时允许所有请求
-        return api_key == required_key
+        return hmac.compare_digest(api_key, required_key)
 
     def do_OPTIONS(self) -> None:
         """处理 CORS 预检请求"""
@@ -100,8 +101,16 @@ class SearchRequestHandler(BaseHTTPRequestHandler):
             self._send_json_response(401, {"error": "Unauthorized"})
             return
 
-        # 读取请求体
+        # 读取请求体（添加 Content-Length 上限校验，防止 DoS）
+        MAX_REQUEST_SIZE = 1 * 1024 * 1024  # 1 MB
         content_length = int(self.headers.get("Content-Length", 0))
+        if content_length > MAX_REQUEST_SIZE:
+            self._send_json_response(413, {
+                "error": "Request too large",
+                "max_size": MAX_REQUEST_SIZE,
+                "received_size": content_length
+            })
+            return
         body = self.rfile.read(content_length)
 
         try:
