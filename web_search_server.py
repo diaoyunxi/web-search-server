@@ -14,6 +14,7 @@ Anthropic Messages API 兼容的搜索服务器
 """
 
 import argparse
+import hmac
 import json
 import os
 import re
@@ -54,7 +55,7 @@ class SearchRequestHandler(BaseHTTPRequestHandler):
 
         if not required_key:
             return True  # 未设置密钥时允许所有请求
-        return api_key == required_key
+        return hmac.compare_digest(api_key, required_key)
 
     def do_OPTIONS(self) -> None:
         """处理 CORS 预检请求"""
