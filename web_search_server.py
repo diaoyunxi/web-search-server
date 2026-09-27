@@ -285,16 +285,18 @@ class SearchRequestHandler(BaseHTTPRequestHandler):
 def main() -> None:
     parser = argparse.ArgumentParser(description="Anthropic-compatible Web Search Server")
     parser.add_argument("--port", type=int, default=DEFAULT_PORT, help=f"Port to listen on (default: {DEFAULT_PORT})")
+    parser.add_argument("--host", type=str, default=os.environ.get("SEARCH_SERVER_HOST", "127.0.0.1"), help="Bind address (default: 127.0.0.1, env: SEARCH_SERVER_HOST)")
     parser.add_argument("--api-key", type=str, default=None, help="API key for authentication")
     args = parser.parse_args()
 
+    host = args.host
     port = args.port
     api_key = args.api_key or DEFAULT_API_KEY
 
-    server = HTTPServer(("0.0.0.0", port), SearchRequestHandler)
+    server = HTTPServer((host, port), SearchRequestHandler)
     server.api_key = api_key
 
-    print(f"[SearchServer] Starting on http://0.0.0.0:{port}", flush=True)
+    print(f"[SearchServer] Starting on http://{host}:{port}", flush=True)
     print(f"[SearchServer] API key {'set' if api_key else 'not set'}", flush=True)
     print(f"[SearchServer] Endpoints:", flush=True)
     print(f"  POST /messages  - Search endpoint (Anthropic Messages API)", flush=True)
