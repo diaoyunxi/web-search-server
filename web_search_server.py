@@ -64,6 +64,19 @@ class SearchRequestHandler(BaseHTTPRequestHandler):
         self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Api-Key, anthropic-version")
         self.end_headers()
 
+    @staticmethod
+    def _redact_headers(headers: Any) -> dict[str, str]:
+        """脱敏请求头：将 Authorization / X-Api-Key 等敏感字段替换为占位符，
+        防止日志或诊断端点泄露 API 密钥 (CWE-200, CWE-532)。"""
+        _SENSITIVE_KEYS = frozenset({"authorization", "x-api-key", "cookie"})
+        safe: dict[str, str] = {}
+        for key, value in headers.items():
+            if key.lower() in _SENSITIVE_KEYS:
+                safe[key] = "[REDACTED]"
+            else:
+                safe[key] = value
+        return safe
+
     def do_GET(self) -> None:
         """处理 GET 请求"""
         if self.path == "/health" or self.path == "/":
@@ -74,12 +87,20 @@ class SearchRequestHandler(BaseHTTPRequestHandler):
                 "supported_tools": ["web_search_20250305"]
             })
         elif self.path == "/log":
+            # 诊断端点需要鉴权，防止未授权访问泄露请求历史 (CWE-306)
+            if not self._check_auth():
+                self._send_json_response(401, {"error": "Unauthorized"})
+                return
             with self.log_lock:
                 self._send_json_response(200, {
                     "total_requests": len(self.request_log),
                     "requests": self.request_log[-20:]
                 })
         elif self.path == "/stats":
+            # 诊断端点需要鉴权 (CWE-306)
+            if not self._check_auth():
+                self._send_json_response(401, {"error": "Unauthorized"})
+                return
             with self.log_lock:
                 self._send_json_response(200, {
                     "total_requests": len(self.request_log),
@@ -110,13 +131,13 @@ class SearchRequestHandler(BaseHTTPRequestHandler):
             self._send_json_response(400, {"error": "Invalid JSON"})
             return
 
-        # 记录请求
+        # 记录请求（脱敏请求头，防止日志泄露 API 密钥等敏感信息）
         with self.log_lock:
             self.request_log.append({
                 "timestamp": time.time(),
                 "method": "POST",
                 "path": "/messages",
-                "headers": dict(self.headers),
+                "headers": self._redact_headers(self.headers),
                 "body": request_data
             })
 
