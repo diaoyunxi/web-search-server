@@ -26,6 +26,8 @@ from typing import Any
 # 默认配置
 DEFAULT_PORT = 18923
 DEFAULT_API_KEY = os.environ.get("DEEPSEEK_API_KEY", "")
+# CORS 允许的源，默认仅允许 localhost，可通过环境变量扩展
+CORS_ALLOWED_ORIGIN = os.environ.get("SEARCH_SERVER_CORS_ORIGIN", "http://localhost")
 
 
 class SearchRequestHandler(BaseHTTPRequestHandler):
@@ -43,7 +45,7 @@ class SearchRequestHandler(BaseHTTPRequestHandler):
         """发送 JSON 响应"""
         self.send_response(status_code)
         self.send_header("Content-Type", "application/json")
-        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Origin", CORS_ALLOWED_ORIGIN)
         self.end_headers()
         self.wfile.write(json.dumps(data, ensure_ascii=False, indent=2).encode("utf-8"))
 
@@ -59,7 +61,7 @@ class SearchRequestHandler(BaseHTTPRequestHandler):
     def do_OPTIONS(self) -> None:
         """处理 CORS 预检请求"""
         self.send_response(200)
-        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Origin", CORS_ALLOWED_ORIGIN)
         self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
         self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Api-Key, anthropic-version")
         self.end_headers()
