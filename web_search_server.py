@@ -101,8 +101,16 @@ class SearchRequestHandler(BaseHTTPRequestHandler):
             self._send_json_response(401, {"error": "Unauthorized"})
             return
 
-        # 读取请求体
+        # 读取请求体（添加 Content-Length 上限校验，防止 DoS）
+        MAX_REQUEST_SIZE = 1 * 1024 * 1024  # 1 MB
         content_length = int(self.headers.get("Content-Length", 0))
+        if content_length > MAX_REQUEST_SIZE:
+            self._send_json_response(413, {
+                "error": "Request too large",
+                "max_size": MAX_REQUEST_SIZE,
+                "received_size": content_length
+            })
+            return
         body = self.rfile.read(content_length)
 
         try:
