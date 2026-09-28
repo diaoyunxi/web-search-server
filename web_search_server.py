@@ -162,7 +162,7 @@ class SearchRequestHandler(BaseHTTPRequestHandler):
         results = self._perform_real_search(query, max_uses)
 
         # 构建响应
-        return self._build_search_response(results, query)
+        return self._build_search_response(results, query, search_failed=results is None)
 
     def _extract_query(self, messages: list) -> str:
         """从消息中提取搜索查询"""
@@ -228,10 +228,46 @@ class SearchRequestHandler(BaseHTTPRequestHandler):
             
         except Exception as e:
             print(f"[SearchServer] Real search failed: {e}", file=sys.stderr, flush=True)
-            return []
+            return None
 
-    def _build_search_response(self, results: list[dict[str, Any]], query: str) -> dict[str, Any]:
-        """构建 Anthropic Messages API 格式的响应"""
+    def _build_search_response(self, results: list[dict[str, Any]] | None, query: str, search_failed: bool = False) -> dict[str, Any]:
+        """构建 Anthropic Messages API 格式的响应
+
+        Args:
+            results: 搜索结果列表；None 表示搜索本身失败（区别于空列表 []）
+            query: 搜索查询
+            search_failed: 搜索是否失败，用于生成不同的提示文本
+        """
+        # 搜索失败时返回明确错误提示，避免 AI 误判为"无结果"
+        if search_failed:
+            return {
+                "id": f"msg_{int(time.time())}",
+                "type": "message",
+                "role": "assistant",
+                "content": [
+                    {
+                        "type": "text",
+                        "text": f"Web search for '{query}' failed (search engine unreachable or timed out). Please retry later.",
+                        "citations": []
+                    },
+                    {
+                        "type": "web_search_tool_result",
+                        "content": []
+                    }
+                ],
+                "model": "web-search-server",
+                "stop_reason": "end_turn",
+                "stop_sequence": None,
+                "usage": {
+                    "input_tokens": len(query.split()),
+                    "output_tokens": 0
+                }
+            }
+
+        # results 为空列表或非空列表时正常处理
+        if results is None:
+            results = []
+
         # 构建 citations
         citations = []
         for result in results:
