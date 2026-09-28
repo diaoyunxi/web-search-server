@@ -100,8 +100,21 @@ class SearchRequestHandler(BaseHTTPRequestHandler):
             self._send_json_response(401, {"error": "Unauthorized"})
             return
 
-        # 读取请求体
-        content_length = int(self.headers.get("Content-Length", 0))
+        # 读取请求体（校验 Content-Length 合法性与上限）
+        content_length_header = self.headers.get("Content-Length", "0")
+        try:
+            content_length = int(content_length_header)
+        except (ValueError, TypeError):
+            self._send_json_response(400, {"error": "Invalid Content-Length header"})
+            return
+        if content_length < 0:
+            self._send_json_response(400, {"error": "Content-Length must be non-negative"})
+            return
+        # 请求体上限 1MB，防止 DoS
+        MAX_BODY_SIZE = 1 * 1024 * 1024
+        if content_length > MAX_BODY_SIZE:
+            self._send_json_response(413, {"error": f"Request body too large (max {MAX_BODY_SIZE} bytes)"})
+            return
         body = self.rfile.read(content_length)
 
         try:
@@ -205,12 +218,26 @@ class SearchRequestHandler(BaseHTTPRequestHandler):
                 html = response.read().decode("utf-8", errors="ignore")
             
             results = []
-            # 解析搜索结果
+            # 解析搜索结果（主模式：DuckDuckGo HTML 版 class 选择器）
             link_pattern = r'<a class="result__a" href="(https?://[^"]+)"[^>]*>([^<]+)</a>'
             snippet_pattern = r'<a class="result__snippet"[^>]*>([^<]+)</a>'
             
             links = re.findall(link_pattern, html)
             snippets = re.findall(snippet_pattern, html)
+            
+            # Fallback 模式：DuckDuckGo 可能变更 HTML 结构
+            if not links:
+                fallback_link = r'<a[^>]+class="result[^"]*"[^>]+href="(https?://[^"]+)"[^>]*>([^<]+)</a>'
+                fallback_snippet = r'<span class="result__snippet"[^>]*>([^<]+)</span>'
+                links = re.findall(fallback_link, html)
+                snippets = re.findall(fallback_snippet, html)
+
+            if not links:
+                print(
+                    f"[SearchServer] WARNING: DuckDuckGo HTML 解析未匹配到结果，"
+                    f"页面结构可能已变更 (HTML 长度={len(html)})",
+                    file=sys.stderr, flush=True,
+                )
             
             for i, (link, title) in enumerate(links[:max_results]):
                 link = re.sub(r"uddg=([^&]+).*", r"\1", link)
