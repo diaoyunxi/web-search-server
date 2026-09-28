@@ -20,6 +20,7 @@ import re
 import sys
 import time
 import threading
+import signal
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from typing import Any
 
@@ -281,6 +282,15 @@ class SearchRequestHandler(BaseHTTPRequestHandler):
         
         return response
 
+
+
+def _graceful_shutdown(signum, frame):
+    """优雅关闭搜索服务器"""
+    print("\n[SearchServer] Received shutdown signal, closing...", flush=True)
+    import sys
+    sys.exit(0)
+
+signal.signal(signal.SIGTERM, _graceful_shutdown)
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Anthropic-compatible Web Search Server")
