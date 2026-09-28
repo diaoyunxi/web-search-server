@@ -28,6 +28,22 @@ DEFAULT_PORT = 18923
 DEFAULT_API_KEY = os.environ.get("DEEPSEEK_API_KEY", "")
 
 
+# === Rate Limiting ===
+import time as _time
+from collections import defaultdict
+
+MAX_REQUESTS_PER_MINUTE = 30  # 每 IP 每分钟最大请求数
+_request_counts: dict[str, list[float]] = defaultdict(list)
+
+def _check_rate_limit(client_ip: str) -> bool:
+    now = _time.time()
+    _request_counts[client_ip] = [t for t in _request_counts[client_ip] if now - t < 60]
+    if len(_request_counts[client_ip]) >= MAX_REQUESTS_PER_MINUTE:
+        return False
+    _request_counts[client_ip].append(now)
+    return True
+MAX_REQUESTS_PER_MINUTE = 30  # 每 IP 每分钟最大请求数
+
 class SearchRequestHandler(BaseHTTPRequestHandler):
     """处理搜索请求的 HTTP 处理器"""
 
@@ -91,6 +107,11 @@ class SearchRequestHandler(BaseHTTPRequestHandler):
 
     def do_POST(self) -> None:
         """处理 POST 请求"""
+        # 速率限制检查
+        client_ip = self.client_address[0]
+        if not _check_rate_limit(client_ip):
+            self._send_json_response(429, {"error": "Too many requests. Please try again later."})
+            return
         if self.path != "/messages":
             self._send_json_response(404, {"error": "Not found"})
             return
