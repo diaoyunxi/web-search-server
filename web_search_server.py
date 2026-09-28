@@ -33,6 +33,7 @@ class SearchRequestHandler(BaseHTTPRequestHandler):
 
     # 存储请求历史
     request_log: list[dict[str, Any]] = []
+    MAX_LOG_ENTRIES = 1000  # 防止内存无限增长
     log_lock = threading.Lock()
 
     def log_message(self, format: str, *args: Any) -> None:
@@ -113,6 +114,9 @@ class SearchRequestHandler(BaseHTTPRequestHandler):
         # 记录请求
         with self.log_lock:
             self.request_log.append({
+            # 限制日志条目数量，防止内存无限增长
+            if len(self.request_log) > self.MAX_LOG_ENTRIES:
+                self.request_log = self.request_log[-self.MAX_LOG_ENTRIES:]
                 "timestamp": time.time(),
                 "method": "POST",
                 "path": "/messages",
