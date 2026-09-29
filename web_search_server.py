@@ -27,6 +27,14 @@ from typing import Any
 DEFAULT_PORT = 18923
 DEFAULT_API_KEY = os.environ.get("DEEPSEEK_API_KEY", "")
 
+# 安全限制：请求日志中请求体最大存储字节数（防止大请求体导致内存膨胀）
+MAX_LOG_BODY_BYTES = 1024
+# 敏感请求头列表（日志中自动脱敏）
+_SENSITIVE_HEADERS = frozenset({
+    "authorization", "cookie", "set-cookie", "x-api-key",
+    "proxy-authorization", "x-forwarded-for",
+})
+
 
 class SearchRequestHandler(BaseHTTPRequestHandler):
     """处理搜索请求的 HTTP 处理器"""
@@ -110,14 +118,28 @@ class SearchRequestHandler(BaseHTTPRequestHandler):
             self._send_json_response(400, {"error": "Invalid JSON"})
             return
 
-        # 记录请求
+        # 记录请求（脱敏：截断请求体 + 隐藏敏感 headers）
         with self.log_lock:
+            # 脱敏 headers：隐藏 Authorization / Cookie / API Key 等
+            safe_headers = {}
+            for k, v in self.headers.items():
+                if k.lower() in _SENSITIVE_HEADERS:
+                    safe_headers[k] = "***REDACTED***"
+                else:
+                    safe_headers[k] = v
+            # 截断请求体，防止大消息导致内存膨胀
+            body_str = json.dumps(request_data, ensure_ascii=False)
+            truncated_body = (
+                body_str[:MAX_LOG_BODY_BYTES] + f"...[truncated, total {len(body_str)} bytes]"
+                if len(body_str) > MAX_LOG_BODY_BYTES
+                else request_data
+            )
             self.request_log.append({
                 "timestamp": time.time(),
                 "method": "POST",
                 "path": "/messages",
-                "headers": dict(self.headers),
-                "body": request_data
+                "headers": safe_headers,
+                "body": truncated_body
             })
 
         # 处理请求
