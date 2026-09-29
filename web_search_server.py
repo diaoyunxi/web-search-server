@@ -20,6 +20,7 @@ import re
 import sys
 import time
 import threading
+import hmac
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from typing import Any
 
@@ -54,7 +55,7 @@ class SearchRequestHandler(BaseHTTPRequestHandler):
 
         if not required_key:
             return True  # 未设置密钥时允许所有请求
-        return api_key == required_key
+        return hmac.compare_digest(api_key, required_key)
 
     def do_OPTIONS(self) -> None:
         """处理 CORS 预检请求"""
