@@ -113,6 +113,9 @@ class SearchRequestHandler(BaseHTTPRequestHandler):
         # 记录请求
         with self.log_lock:
             self.request_log.append({
+            # 防止长期运行内存无限增长
+            if len(self.request_log) > self._max_log_size:
+                self.request_log = self.request_log[-self._max_log_size:]
                 "timestamp": time.time(),
                 "method": "POST",
                 "path": "/messages",
