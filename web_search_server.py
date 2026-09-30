@@ -48,13 +48,18 @@ class SearchRequestHandler(BaseHTTPRequestHandler):
         self.wfile.write(json.dumps(data, ensure_ascii=False, indent=2).encode("utf-8"))
 
     def _check_auth(self) -> bool:
-        """检查 API 密钥认证"""
+        """检查 API 密钥认证（使用 hmac.compare_digest 防止时序侧信道攻击）"""
+        import hmac
+
         api_key = self.headers.get("X-Api-Key", "") or self.headers.get("Authorization", "").replace("Bearer ", "")
         required_key = getattr(self.server, "api_key", "")
 
         if not required_key:
             return True  # 未设置密钥时允许所有请求
-        return api_key == required_key
+        # 使用 hmac.compare_digest 进行常数时间比较，防止时序攻击 (CWE-208)
+        if not api_key:
+            return False
+        return hmac.compare_digest(api_key.encode("utf-8"), required_key.encode("utf-8"))
 
     def do_OPTIONS(self) -> None:
         """处理 CORS 预检请求"""
