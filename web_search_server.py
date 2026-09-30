@@ -31,8 +31,8 @@ DEFAULT_API_KEY = os.environ.get("DEEPSEEK_API_KEY", "")
 class SearchRequestHandler(BaseHTTPRequestHandler):
     """处理搜索请求的 HTTP 处理器"""
 
-    # 存储请求历史
-    request_log: list[dict[str, Any]] = []
+    # 请求日志存储在 server 实例上（非类变量），避免跨请求共享可变状态
+    # log_lock 为类变量，确保跨实例的线程安全访问
     log_lock = threading.Lock()
 
     def log_message(self, format: str, *args: Any) -> None:
@@ -75,14 +75,16 @@ class SearchRequestHandler(BaseHTTPRequestHandler):
             })
         elif self.path == "/log":
             with self.log_lock:
+                log = getattr(self.server, "request_log", [])
                 self._send_json_response(200, {
-                    "total_requests": len(self.request_log),
-                    "requests": self.request_log[-20:]
+                    "total_requests": len(log),
+                    "requests": log[-20:]
                 })
         elif self.path == "/stats":
             with self.log_lock:
+                log = getattr(self.server, "request_log", [])
                 self._send_json_response(200, {
-                    "total_requests": len(self.request_log),
+                    "total_requests": len(log),
                     "api_key_set": bool(getattr(self.server, "api_key", "")),
                     "endpoint": "/messages"
                 })
@@ -112,7 +114,9 @@ class SearchRequestHandler(BaseHTTPRequestHandler):
 
         # 记录请求
         with self.log_lock:
-            self.request_log.append({
+            if not hasattr(self.server, "request_log"):
+                self.server.request_log = []
+            self.server.request_log.append({
                 "timestamp": time.time(),
                 "method": "POST",
                 "path": "/messages",
@@ -193,6 +197,10 @@ class SearchRequestHandler(BaseHTTPRequestHandler):
             encoded_query = urllib.parse.quote(query)
             url = f"https://html.duckduckgo.com/html/?q={encoded_query}"
             
+            # 校验 URL scheme，防止 file:// 等非 HTTP 协议 (CWE-918, B310)
+            if not url.lower().startswith(("http://", "https://")):
+                logger.warning("拒绝非 HTTP(S) 协议 URL: %s", url)
+                return {"error": "不允许的 URL 协议"}
             req = urllib.request.Request(
                 url,
                 headers={
@@ -293,6 +301,7 @@ def main() -> None:
 
     server = HTTPServer(("0.0.0.0", port), SearchRequestHandler)
     server.api_key = api_key
+    server.request_log = []  # 请求日志存储在 server 实例上，所有 handler 共享
 
     print(f"[SearchServer] Starting on http://0.0.0.0:{port}", flush=True)
     print(f"[SearchServer] API key {'set' if api_key else 'not set'}", flush=True)
