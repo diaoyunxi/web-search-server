@@ -197,6 +197,10 @@ class SearchRequestHandler(BaseHTTPRequestHandler):
             encoded_query = urllib.parse.quote(query)
             url = f"https://html.duckduckgo.com/html/?q={encoded_query}"
             
+            # 校验 URL scheme，防止 file:// 等非 HTTP 协议 (CWE-918, B310)
+            if not url.lower().startswith(("http://", "https://")):
+                logger.warning("拒绝非 HTTP(S) 协议 URL: %s", url)
+                return {"error": "不允许的 URL 协议"}
             req = urllib.request.Request(
                 url,
                 headers={
