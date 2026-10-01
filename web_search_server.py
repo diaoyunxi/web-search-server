@@ -126,7 +126,7 @@ class SearchRequestHandler(BaseHTTPRequestHandler):
             self._send_json_response(200, response)
         except Exception as e:
             print(f"[SearchServer] Error handling request: {e}", file=sys.stderr, flush=True)
-            self._send_json_response(500, {"error": str(e)})
+            self._send_json_response(500, {"error": "Internal server error"})
 
     def _handle_search_request(self, request_data: dict[str, Any]) -> dict[str, Any]:
         """处理搜索请求"""
