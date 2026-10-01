@@ -100,8 +100,15 @@ class SearchRequestHandler(BaseHTTPRequestHandler):
             self._send_json_response(401, {"error": "Unauthorized"})
             return
 
-        # 读取请求体
-        content_length = int(self.headers.get("Content-Length", 0))
+        # 读取请求体（对畸形 Content-Length 做容错处理）
+        try:
+            content_length = int(self.headers.get("Content-Length", 0))
+        except (ValueError, TypeError):
+            self._send_json_response(400, {"error": "Invalid Content-Length header"})
+            return
+        if content_length < 0:
+            self._send_json_response(400, {"error": "Negative Content-Length"})
+            return
         body = self.rfile.read(content_length)
 
         try:
