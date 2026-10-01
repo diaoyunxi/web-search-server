@@ -26,6 +26,7 @@ from typing import Any
 # 默认配置
 DEFAULT_PORT = 18923
 DEFAULT_API_KEY = os.environ.get("DEEPSEEK_API_KEY", "")
+DEFAULT_HOST = os.environ.get("SEARCH_SERVER_HOST", "127.0.0.1")
 
 
 class SearchRequestHandler(BaseHTTPRequestHandler):
@@ -291,10 +292,10 @@ def main() -> None:
     port = args.port
     api_key = args.api_key or DEFAULT_API_KEY
 
-    server = HTTPServer(("0.0.0.0", port), SearchRequestHandler)
+    server = HTTPServer((DEFAULT_HOST, port), SearchRequestHandler)
     server.api_key = api_key
 
-    print(f"[SearchServer] Starting on http://0.0.0.0:{port}", flush=True)
+    print(f"[SearchServer] Starting on http://{DEFAULT_HOST}:{port}", flush=True)
     print(f"[SearchServer] API key {'set' if api_key else 'not set'}", flush=True)
     print(f"[SearchServer] Endpoints:", flush=True)
     print(f"  POST /messages  - Search endpoint (Anthropic Messages API)", flush=True)
