@@ -110,13 +110,21 @@ class SearchRequestHandler(BaseHTTPRequestHandler):
             self._send_json_response(400, {"error": "Invalid JSON"})
             return
 
-        # 记录请求
+        # 记录请求（过滤敏感 Headers，防止 API 密钥通过 /log 端点泄露）
+        _SENSITIVE_HEADERS = {
+            "authorization", "x-api-key", "cookie", "set-cookie",
+            "proxy-authorization", "x-auth-token",
+        }
+        safe_headers = {
+            k: ("***REDACTED***" if k.lower() in _SENSITIVE_HEADERS else v)
+            for k, v in self.headers.items()
+        }
         with self.log_lock:
             self.request_log.append({
                 "timestamp": time.time(),
                 "method": "POST",
                 "path": "/messages",
-                "headers": dict(self.headers),
+                "headers": safe_headers,
                 "body": request_data
             })
 
