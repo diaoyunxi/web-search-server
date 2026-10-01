@@ -75,12 +75,20 @@ class SearchRequestHandler(BaseHTTPRequestHandler):
             })
         elif self.path == "/log":
             with self.log_lock:
+            # Require authentication for sensitive endpoints (CWE-306)
+            if not self._check_auth():
+                self._send_json_response(401, {"error": "Unauthorized"})
+                return
                 self._send_json_response(200, {
                     "total_requests": len(self.request_log),
                     "requests": self.request_log[-20:]
                 })
         elif self.path == "/stats":
             with self.log_lock:
+            # Require authentication for sensitive endpoints (CWE-306)
+            if not self._check_auth():
+                self._send_json_response(401, {"error": "Unauthorized"})
+                return
                 self._send_json_response(200, {
                     "total_requests": len(self.request_log),
                     "api_key_set": bool(getattr(self.server, "api_key", "")),
