@@ -31,8 +31,9 @@ DEFAULT_API_KEY = os.environ.get("DEEPSEEK_API_KEY", "")
 class SearchRequestHandler(BaseHTTPRequestHandler):
     """处理搜索请求的 HTTP 处理器"""
 
-    # 存储请求历史
+    # 存储请求历史（设置上限防止内存无界增长）
     request_log: list[dict[str, Any]] = []
+    _MAX_LOG_SIZE = 1000
     log_lock = threading.Lock()
 
     def log_message(self, format: str, *args: Any) -> None:
@@ -110,7 +111,7 @@ class SearchRequestHandler(BaseHTTPRequestHandler):
             self._send_json_response(400, {"error": "Invalid JSON"})
             return
 
-        # 记录请求
+        # 记录请求（保留最近 _MAX_LOG_SIZE 条，防止内存无界增长）
         with self.log_lock:
             self.request_log.append({
                 "timestamp": time.time(),
@@ -119,6 +120,8 @@ class SearchRequestHandler(BaseHTTPRequestHandler):
                 "headers": dict(self.headers),
                 "body": request_data
             })
+            if len(self.request_log) > self._MAX_LOG_SIZE:
+                self.request_log = self.request_log[-self._MAX_LOG_SIZE:]
 
         # 处理请求
         try:
