@@ -18,9 +18,9 @@ import json
 import os
 import re
 import sys
-import time
 import threading
-from http.server import HTTPServer, BaseHTTPRequestHandler
+import time
+from http.server import BaseHTTPRequestHandler, HTTPServer
 from typing import Any
 
 # 默认配置
@@ -187,8 +187,8 @@ class SearchRequestHandler(BaseHTTPRequestHandler):
     def _perform_real_search(self, query: str, max_results: int) -> list[dict[str, Any]]:
         """执行真实搜索（使用 DuckDuckGo）"""
         try:
-            import urllib.request
             import urllib.parse
+            import urllib.request
             
             encoded_query = urllib.parse.quote(query)
             url = f"https://html.duckduckgo.com/html/?q={encoded_query}"
@@ -296,11 +296,11 @@ def main() -> None:
 
     print(f"[SearchServer] Starting on http://0.0.0.0:{port}", flush=True)
     print(f"[SearchServer] API key {'set' if api_key else 'not set'}", flush=True)
-    print(f"[SearchServer] Endpoints:", flush=True)
-    print(f"  POST /messages  - Search endpoint (Anthropic Messages API)", flush=True)
-    print(f"  GET  /health    - Health check", flush=True)
-    print(f"  GET  /log       - Request log", flush=True)
-    print(f"  GET  /stats     - Server stats", flush=True)
+    print("[SearchServer] Endpoints:", flush=True)
+    print("  POST /messages  - Search endpoint (Anthropic Messages API)", flush=True)
+    print("  GET  /health    - Health check", flush=True)
+    print("  GET  /log       - Request log", flush=True)
+    print("  GET  /stats     - Server stats", flush=True)
     print()
 
     try:
