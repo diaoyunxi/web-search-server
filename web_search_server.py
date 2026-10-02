@@ -66,6 +66,7 @@ class SearchRequestHandler(BaseHTTPRequestHandler):
 
     def do_GET(self) -> None:
         """处理 GET 请求"""
+        # 健康检查端点无需认证
         if self.path == "/health" or self.path == "/":
             self._send_json_response(200, {
                 "status": "ok",
@@ -73,7 +74,14 @@ class SearchRequestHandler(BaseHTTPRequestHandler):
                 "version": "1.0.0",
                 "supported_tools": ["web_search_20250305"]
             })
-        elif self.path == "/log":
+            return
+        
+        # 其他所有 GET 端点都需要认证（与 POST 端点保持一致）
+        if not self._check_auth():
+            self._send_json_response(401, {"error": "Unauthorized"})
+            return
+        
+        if self.path == "/log":
             with self.log_lock:
                 self._send_json_response(200, {
                     "total_requests": len(self.request_log),
