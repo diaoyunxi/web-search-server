@@ -26,6 +26,7 @@ from typing import Any
 # 默认配置
 DEFAULT_PORT = 18923
 DEFAULT_API_KEY = os.environ.get("DEEPSEEK_API_KEY", "")
+DEFAULT_CORS_ORIGIN = os.environ.get("SEARCH_SERVER_CORS_ORIGIN", "*")
 
 
 class SearchRequestHandler(BaseHTTPRequestHandler):
@@ -43,7 +44,8 @@ class SearchRequestHandler(BaseHTTPRequestHandler):
         """发送 JSON 响应"""
         self.send_response(status_code)
         self.send_header("Content-Type", "application/json")
-        self.send_header("Access-Control-Allow-Origin", "*")
+        cors_origin = getattr(self.server, "cors_origin", DEFAULT_CORS_ORIGIN)
+        self.send_header("Access-Control-Allow-Origin", cors_origin)
         self.end_headers()
         self.wfile.write(json.dumps(data, ensure_ascii=False, indent=2).encode("utf-8"))
 
@@ -58,8 +60,9 @@ class SearchRequestHandler(BaseHTTPRequestHandler):
 
     def do_OPTIONS(self) -> None:
         """处理 CORS 预检请求"""
+        cors_origin = getattr(self.server, "cors_origin", DEFAULT_CORS_ORIGIN)
         self.send_response(200)
-        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Origin", cors_origin)
         self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
         self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Api-Key, anthropic-version")
         self.end_headers()
@@ -286,16 +289,20 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Anthropic-compatible Web Search Server")
     parser.add_argument("--port", type=int, default=DEFAULT_PORT, help=f"Port to listen on (default: {DEFAULT_PORT})")
     parser.add_argument("--api-key", type=str, default=None, help="API key for authentication")
+    parser.add_argument("--cors-origin", type=str, default=None, help="CORS Access-Control-Allow-Origin (default: * or SEARCH_SERVER_CORS_ORIGIN env)")
     args = parser.parse_args()
 
     port = args.port
     api_key = args.api_key or DEFAULT_API_KEY
+    cors_origin = args.cors_origin or DEFAULT_CORS_ORIGIN
 
     server = HTTPServer(("0.0.0.0", port), SearchRequestHandler)
     server.api_key = api_key
+    server.cors_origin = cors_origin
 
     print(f"[SearchServer] Starting on http://0.0.0.0:{port}", flush=True)
     print(f"[SearchServer] API key {'set' if api_key else 'not set'}", flush=True)
+    print(f"[SearchServer] CORS origin: {cors_origin}", flush=True)
     print(f"[SearchServer] Endpoints:", flush=True)
     print(f"  POST /messages  - Search endpoint (Anthropic Messages API)", flush=True)
     print(f"  GET  /health    - Health check", flush=True)
