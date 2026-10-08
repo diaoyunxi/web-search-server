@@ -307,7 +307,7 @@ def main() -> None:
         # 注册 graceful shutdown 信号处理 (CWE-404)
         import signal as _signal
         def _graceful_shutdown(signum, frame):
-            logger.info("收到信号 %s, 正在优雅关闭...", signum)
+            print(f"[SearchServer] 收到信号 {signum}, 正在优雅关闭...", flush=True)
             server.shutdown()
         _signal.signal(_signal.SIGTERM, _graceful_shutdown)
         _signal.signal(_signal.SIGINT, _graceful_shutdown)
