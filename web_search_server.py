@@ -27,6 +27,9 @@ from typing import Any
 DEFAULT_PORT = 18923
 DEFAULT_API_KEY = os.environ.get("DEEPSEEK_API_KEY", "")
 
+# 请求体大小上限：防止恶意超大请求导致 OOM (CWE-770)
+MAX_BODY_SIZE = 10 * 1024 * 1024  # 10 MB
+
 
 class SearchRequestHandler(BaseHTTPRequestHandler):
     """处理搜索请求的 HTTP 处理器"""
@@ -100,8 +103,19 @@ class SearchRequestHandler(BaseHTTPRequestHandler):
             self._send_json_response(401, {"error": "Unauthorized"})
             return
 
-        # 读取请求体
-        content_length = int(self.headers.get("Content-Length", 0))
+        # 读取请求体（含大小校验防止 OOM DoS）
+        try:
+            content_length = int(self.headers.get("Content-Length", 0))
+        except (ValueError, TypeError):
+            self._send_json_response(400, {"error": "Invalid Content-Length"})
+            return
+
+        if content_length > MAX_BODY_SIZE:
+            self._send_json_response(413, {
+                "error": f"Request body too large ({content_length} bytes), max allowed is {MAX_BODY_SIZE} bytes"
+            })
+            return
+
         body = self.rfile.read(content_length)
 
         try:
