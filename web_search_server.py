@@ -206,7 +206,8 @@ class SearchRequestHandler(BaseHTTPRequestHandler):
             
             results = []
             # 解析搜索结果
-            link_pattern = r'<a class="result__a" href="(https?://[^"]+)"[^>]*>([^<]+)</a>'
+            # DuckDuckGo HTML 属性顺序不固定，class 可能在 href 之前，使用 [^>]* 通配匹配
+            link_pattern = r'<a[^>]*class="result__a"[^>]*href="(https?://[^"]+)"[^>]*>([^<]+)</a>'
             snippet_pattern = r'<a class="result__snippet"[^>]*>([^<]+)</a>'
             
             links = re.findall(link_pattern, html)
