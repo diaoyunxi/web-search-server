@@ -161,6 +161,10 @@ class SearchRequestHandler(BaseHTTPRequestHandler):
         max_uses = search_tool.get("max_uses", 5)
         results = self._perform_real_search(query, max_uses)
 
+        # 检查搜索是否出错
+        if results and len(results) == 1 and results[0].get("error"):
+            return self._build_search_response([], query, search_error=results[0]["message"])
+
         # 构建响应
         return self._build_search_response(results, query)
 
@@ -228,9 +232,9 @@ class SearchRequestHandler(BaseHTTPRequestHandler):
             
         except Exception as e:
             print(f"[SearchServer] Real search failed: {e}", file=sys.stderr, flush=True)
-            return []
+            return [{"error": True, "message": f"Search service temporarily unavailable"}]
 
-    def _build_search_response(self, results: list[dict[str, Any]], query: str) -> dict[str, Any]:
+    def _build_search_response(self, results: list[dict[str, Any]], query: str, search_error: str = "") -> dict[str, Any]:
         """构建 Anthropic Messages API 格式的响应"""
         # 构建 citations
         citations = []
@@ -254,6 +258,12 @@ class SearchRequestHandler(BaseHTTPRequestHandler):
                 item["page_age"] = result["page_age"]
             search_results.append(item)
         
+        # 构建文本描述
+        if search_error:
+            result_text = f"Search for '{query}' failed: {search_error}. No results available."
+        else:
+            result_text = f"Found {len(results)} sources for '{query}'."
+
         # 构建完整响应
         response = {
             "id": f"msg_{int(time.time())}",
@@ -262,7 +272,7 @@ class SearchRequestHandler(BaseHTTPRequestHandler):
             "content": [
                 {
                     "type": "text",
-                    "text": f"Found {len(results)} sources for '{query}'.",
+                    "text": result_text,
                     "citations": citations
                 },
                 {
