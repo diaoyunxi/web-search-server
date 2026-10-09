@@ -165,8 +165,8 @@ class SearchRequestHandler(BaseHTTPRequestHandler):
         return self._build_search_response(results, query)
 
     def _extract_query(self, messages: list) -> str:
-        """从消息中提取搜索查询"""
-        for msg in messages:
+        """从消息中提取搜索查询（反向遍历取最近用户消息）"""
+        for msg in reversed(messages):
             if msg.get("role") == "user":
                 content = msg.get("content", [])
                 if isinstance(content, str):
