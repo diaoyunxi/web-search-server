@@ -34,6 +34,17 @@ class SearchRequestHandler(BaseHTTPRequestHandler):
     # 存储请求历史
     request_log: list[dict[str, Any]] = []
     log_lock = threading.Lock()
+    # 请求计数器，用于生成唯一消息 ID（避免同一秒内多次请求产生 ID 碰撞）
+    _request_counter = 0
+    _counter_lock = threading.Lock()
+
+    @classmethod
+    def _next_request_id(cls) -> str:
+        """生成唯一请求 ID: 时间戳 + 递增计数器，防止同一秒内请求 ID 碰撞"""
+        with cls._counter_lock:
+            cls._request_counter += 1
+            counter = cls._request_counter
+        return f"msg_{int(time.time())}_{counter}"
 
     def log_message(self, format: str, *args: Any) -> None:
         """覆盖默认日志输出"""
@@ -143,7 +154,7 @@ class SearchRequestHandler(BaseHTTPRequestHandler):
 
         if not search_tool:
             return {
-                "id": f"msg_{int(time.time())}",
+                "id": self._next_request_id(),
                 "type": "message",
                 "role": "assistant",
                 "content": [{"type": "text", "text": "No web search tool configured."}],
@@ -256,7 +267,7 @@ class SearchRequestHandler(BaseHTTPRequestHandler):
         
         # 构建完整响应
         response = {
-            "id": f"msg_{int(time.time())}",
+            "id": self._next_request_id(),
             "type": "message",
             "role": "assistant",
             "content": [
