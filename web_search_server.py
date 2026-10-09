@@ -205,22 +205,66 @@ class SearchRequestHandler(BaseHTTPRequestHandler):
                 html = response.read().decode("utf-8", errors="ignore")
             
             results = []
-            # 解析搜索结果
-            link_pattern = r'<a class="result__a" href="(https?://[^"]+)"[^>]*>([^<]+)</a>'
-            snippet_pattern = r'<a class="result__snippet"[^>]*>([^<]+)</a>'
-            
-            links = re.findall(link_pattern, html)
-            snippets = re.findall(snippet_pattern, html)
-            
-            for i, (link, title) in enumerate(links[:max_results]):
-                link = re.sub(r"uddg=([^&]+).*", r"\1", link)
-                link = urllib.parse.unquote(link)
-                snippet = snippets[i] if i < len(snippets) else ""
-                
+            # 解析搜索结果 — 以整个结果块为单位提取，避免链接/摘要索引错位
+            # DuckDuckGo HTML 版每个搜索结果是一个 class="result" 的 div，
+            # 内部包含 result__a (标题链接) 和 result__snippet (摘要)。
+            # 旧实现分两次独立正则匹配链接和摘要再按下标配对，当 HTML 结构
+            # 变化（如某个结果缺少摘要或出现额外 result__a）时会导致索引不对齐。
+            result_block_pattern = re.compile(
+                r'<div[^>]*class="[^"]*result[^"]*"[^>]*>(.*?)</div>\s*(?=<div[^>]*class="[^"]*result|$)',
+                re.DOTALL
+            )
+            link_re = re.compile(
+                r'<a[^>]*class="result__a"[^>]*href="([^"]+)"[^>]*>(.*?)</a>',
+                re.DOTALL
+            )
+            snippet_re = re.compile(
+                r'<a[^>]*class="result__snippet"[^>]*>(.*?)</a>',
+                re.DOTALL
+            )
+            tag_re = re.compile(r'<[^>]+>')
+
+            blocks = result_block_pattern.findall(html)
+
+            # 如果按块提取无结果，回退到宽松模式：在整个 HTML 上逐条匹配
+            if not blocks:
+                blocks = [html]
+
+            for block in blocks:
+                if len(results) >= max_results:
+                    break
+                link_match = link_re.search(block)
+                if not link_match:
+                    continue
+                raw_href = link_match.group(1)
+                raw_title = link_match.group(2)
+
+                # 从 DDG 重定向链接 /l/?uddg=URL&... 中提取真实 URL
+                actual_url = raw_href
+                parsed_qs = urllib.parse.urlparse(raw_href).query
+                if parsed_qs:
+                    params = urllib.parse.parse_qs(parsed_qs)
+                    uddg = params.get("uddg", [None])[0]
+                    if uddg:
+                        actual_url = urllib.parse.unquote(uddg)
+                elif raw_href.startswith("/"):
+                    # 相对路径但无 uddg 参数，丢弃
+                    continue
+
+                # 清理 HTML 标签和实体
+                clean_title = tag_re.sub("", raw_title).strip()
+                clean_title = clean_title.replace("&amp;", "&").replace("&lt;", "<").replace("&gt;", ">").replace("&quot;", '"')
+
+                snippet_match = snippet_re.search(block)
+                clean_snippet = ""
+                if snippet_match:
+                    clean_snippet = tag_re.sub("", snippet_match.group(1)).strip()
+                    clean_snippet = clean_snippet.replace("&amp;", "&").replace("&lt;", "<").replace("&gt;", ">").replace("&quot;", '"')
+
                 results.append({
-                    "url": link,
-                    "title": title.strip(),
-                    "snippet": snippet.strip(),
+                    "url": actual_url,
+                    "title": clean_title,
+                    "snippet": clean_snippet,
                     "page_age": None
                 })
             
