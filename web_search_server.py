@@ -27,6 +27,9 @@ from typing import Any
 DEFAULT_PORT = 18923
 DEFAULT_API_KEY = os.environ.get("DEEPSEEK_API_KEY", "")
 
+# 请求日志最大保留条数，防止内存无限增长 (CWE-770)
+MAX_REQUEST_LOG = int(os.environ.get("SEARCH_SERVER_MAX_LOG", "1000"))
+
 
 class SearchRequestHandler(BaseHTTPRequestHandler):
     """处理搜索请求的 HTTP 处理器"""
@@ -119,6 +122,9 @@ class SearchRequestHandler(BaseHTTPRequestHandler):
                 "headers": dict(self.headers),
                 "body": request_data
             })
+            # 超过上限时裁剪旧日志，防止内存无限增长 (CWE-770)
+            if len(self.request_log) > MAX_REQUEST_LOG:
+                self.request_log = self.request_log[-MAX_REQUEST_LOG:]
 
         # 处理请求
         try:
