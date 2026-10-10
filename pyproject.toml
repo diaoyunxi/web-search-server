@@ -1,0 +1,14 @@
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "S", "RET", "RUF"]
+ignore = [
+    "S603",    # subprocess call with shell=False is safe
+    "S607",    # starting a process with a partial executable path
+    "S101",    # use of assert
+    "S110",    # try-except-pass
+    "E501",    # line too long
+    "S104",    # Possible binding to all interfaces
+]
