@@ -1,0 +1,5 @@
+# 运行时依赖（仅标准库，无需额外安装）
+# Python 3.8+
+#
+# 可选依赖（启用真实搜索时）:
+# pip install duckduckgo-search
