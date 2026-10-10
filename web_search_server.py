@@ -404,8 +404,6 @@ class SearchRequestHandler(BaseHTTPRequestHandler):
                 "output_tokens": len(citations)
             }
         }
-        
-        return response
 
 
 def main() -> None:
