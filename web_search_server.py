@@ -99,21 +99,21 @@ class SearchRequestHandler(BaseHTTPRequestHandler):
                 "supported_tools": ["web_search_20250305"]
             })
         elif self.path == "/log":
-            with self.log_lock:
             # Require authentication for sensitive endpoints (CWE-306)
             if not self._check_auth():
                 self._send_json_response(401, {"error": "Unauthorized"})
                 return
+            with self.log_lock:
                 self._send_json_response(200, {
                     "total_requests": len(self.request_log),
                     "requests": self.request_log[-20:]
                 })
         elif self.path == "/stats":
-            with self.log_lock:
             # Require authentication for sensitive endpoints (CWE-306)
             if not self._check_auth():
                 self._send_json_response(401, {"error": "Unauthorized"})
                 return
+            with self.log_lock:
                 self._send_json_response(200, {
                     "total_requests": len(self.request_log),
                     "api_key_set": bool(getattr(self.server, "api_key", "")),
@@ -156,15 +156,15 @@ class SearchRequestHandler(BaseHTTPRequestHandler):
         }
         with self.log_lock:
             self.request_log.append({
-            # 防止长期运行内存无限增长
-            if len(self.request_log) > self._max_log_size:
-                self.request_log = self.request_log[-self._max_log_size:]
                 "timestamp": time.time(),
                 "method": "POST",
                 "path": "/messages",
                 "headers": sanitized_headers,
                 "body": request_data
             })
+            # 防止长期运行内存无限增长
+            if len(self.request_log) > self._max_log_size:
+                self.request_log = self.request_log[-self._max_log_size:]
 
         # 处理请求
         try:
