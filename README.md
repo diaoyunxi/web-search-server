@@ -129,7 +129,7 @@ SEARCH_API_KEY=your-brave-key SEARCH_ENGINE=brave python3 web_search_server.py -
 | 变量 | 说明 | 默认值 |
 |------|------|--------|
 | `DEEPSEEK_API_KEY` | API 密钥 | 空 |
-| `SEARCH_SERVER_PORT` | 端口号 | 8000 |
+| `SEARCH_SERVER_PORT` | 端口号 | 18923 |
 | `USE_MOCK_RESULTS` | 使用模拟结果 | true |
 | `SEARCH_API_KEY` | 搜索 API 密钥 | 空 |
 | `SEARCH_ENGINE` | 搜索引擎 | duckduckgo |
