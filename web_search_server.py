@@ -1,4 +1,3 @@
-from datetime import timezone
 #!/usr/bin/env python3
 """
 Anthropic Messages API 兼容的搜索服务器
@@ -14,6 +13,7 @@ Anthropic Messages API 兼容的搜索服务器
     SEARCH_SERVER_HOST - 绑定地址，默认 127.0.0.1（仅本机访问）
     SEARCH_SERVER_PORT - 端口号，默认 8000
 """
+
 
 import argparse
 import json
@@ -49,21 +49,17 @@ def _check_rate_limit(client_ip: str) -> bool:
 MAX_REQUESTS_PER_MINUTE = 30  # 每 IP 每分钟最大请求数
 
 class SearchRequestHandler(BaseHTTPRequestHandler):
-    """处理搜索请求的 HTTP 处理器"""
 
     log_lock = threading.Lock()
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
-        """初始化处理器，将 request_log 作为实例变量避免跨实例污染"""
         self.request_log: list[dict[str, Any]] = []
         super().__init__(*args, **kwargs)
 
     def log_message(self, format: str, *args: Any) -> None:
-        """覆盖默认日志输出"""
         print(f"[SearchServer] {args[0]}", file=sys.stderr, flush=True)
 
     def _send_json_response(self, status_code: int, data: dict[str, Any]) -> None:
-        """发送 JSON 响应"""
         self.send_response(status_code)
         self.send_header("Content-Type", "application/json")
         cors_origin = getattr(self.server, "cors_origin", DEFAULT_CORS_ORIGIN)
@@ -72,7 +68,6 @@ class SearchRequestHandler(BaseHTTPRequestHandler):
         self.wfile.write(json.dumps(data, ensure_ascii=False, indent=2).encode("utf-8"))
 
     def _check_auth(self) -> bool:
-        """检查 API 密钥认证"""
         api_key = self.headers.get("X-Api-Key", "") or self.headers.get("Authorization", "").replace("Bearer ", "")
         required_key = getattr(self.server, "api_key", "")
 
@@ -81,7 +76,6 @@ class SearchRequestHandler(BaseHTTPRequestHandler):
         return hmac.compare_digest(api_key, required_key)
 
     def do_OPTIONS(self) -> None:
-        """处理 CORS 预检请求"""
         cors_origin = getattr(self.server, "cors_origin", DEFAULT_CORS_ORIGIN)
         self.send_response(200)
         self.send_header("Access-Control-Allow-Origin", cors_origin)
@@ -90,7 +84,6 @@ class SearchRequestHandler(BaseHTTPRequestHandler):
         self.end_headers()
 
     def do_GET(self) -> None:
-        """处理 GET 请求"""
         if self.path == "/health" or self.path == "/":
             self._send_json_response(200, {
                 "status": "ok",
@@ -100,20 +93,20 @@ class SearchRequestHandler(BaseHTTPRequestHandler):
             })
         elif self.path == "/log":
             with self.log_lock:
-            # Require authentication for sensitive endpoints (CWE-306)
-            if not self._check_auth():
-                self._send_json_response(401, {"error": "Unauthorized"})
-                return
+                # Require authentication for sensitive endpoints (CWE-306)
+                if not self._check_auth():
+                    self._send_json_response(401, {"error": "Unauthorized"})
+                    return
                 self._send_json_response(200, {
                     "total_requests": len(self.request_log),
                     "requests": self.request_log[-20:]
                 })
         elif self.path == "/stats":
             with self.log_lock:
-            # Require authentication for sensitive endpoints (CWE-306)
-            if not self._check_auth():
-                self._send_json_response(401, {"error": "Unauthorized"})
-                return
+                # Require authentication for sensitive endpoints (CWE-306)
+                if not self._check_auth():
+                    self._send_json_response(401, {"error": "Unauthorized"})
+                    return
                 self._send_json_response(200, {
                     "total_requests": len(self.request_log),
                     "api_key_set": bool(getattr(self.server, "api_key", "")),
@@ -123,7 +116,6 @@ class SearchRequestHandler(BaseHTTPRequestHandler):
             self._send_json_response(404, {"error": "Not found"})
 
     def do_POST(self) -> None:
-        """处理 POST 请求"""
         # 速率限制检查
         client_ip = self.client_address[0]
         if not _check_rate_limit(client_ip):
@@ -155,10 +147,10 @@ class SearchRequestHandler(BaseHTTPRequestHandler):
             for k, v in self.headers.items()
         }
         with self.log_lock:
-            self.request_log.append({
             # 防止长期运行内存无限增长
             if len(self.request_log) > self._max_log_size:
                 self.request_log = self.request_log[-self._max_log_size:]
+            self.request_log.append({
                 "timestamp": time.time(),
                 "method": "POST",
                 "path": "/messages",
@@ -175,7 +167,6 @@ class SearchRequestHandler(BaseHTTPRequestHandler):
             self._send_json_response(500, {"error": "internal server error"})
 
     def _handle_search_request(self, request_data: dict[str, Any]) -> dict[str, Any]:
-        """处理搜索请求"""
         messages = request_data.get("messages", [])
         tools = request_data.get("tools", [])
         model = request_data.get("model", "unknown")
@@ -211,7 +202,6 @@ class SearchRequestHandler(BaseHTTPRequestHandler):
         return self._build_search_response(results, query, search_failed=results is None)
 
     def _extract_query(self, messages: list) -> str:
-        """从消息中提取搜索查询（反向遍历取最近用户消息）"""
         for msg in reversed(messages):
             if msg.get("role") == "user":
                 content = msg.get("content", [])
@@ -231,7 +221,6 @@ class SearchRequestHandler(BaseHTTPRequestHandler):
         return ""
 
     def _perform_real_search(self, query: str, max_results: int) -> list[dict[str, Any]]:
-        """执行真实搜索（使用 DuckDuckGo）"""
         try:
             import urllib.request
             import urllib.parse
@@ -321,13 +310,6 @@ class SearchRequestHandler(BaseHTTPRequestHandler):
             return None
 
     def _build_search_response(self, results: list[dict[str, Any]] | None, query: str, search_failed: bool = False) -> dict[str, Any]:
-        """构建 Anthropic Messages API 格式的响应
-
-        Args:
-            results: 搜索结果列表；None 表示搜索本身失败（区别于空列表 []）
-            query: 搜索查询
-            search_failed: 搜索是否失败，用于生成不同的提示文本
-        """
         # 搜索失败时返回明确错误提示，避免 AI 误判为"无结果"
         if search_failed:
             return {
