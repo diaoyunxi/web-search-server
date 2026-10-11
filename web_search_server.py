@@ -1,4 +1,3 @@
-from datetime import timezone
 #!/usr/bin/env python3
 """
 Anthropic Messages API 兼容的搜索服务器
@@ -23,6 +22,7 @@ import sys
 import time
 import threading
 import hmac
+from datetime import timezone
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from typing import Any
 
