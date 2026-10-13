@@ -1,5 +1,7 @@
 """Tests for SearchRequestHandler._extract_query"""
-import unittest, sys, os
+import os
+import sys
+import unittest
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from web_search_server import SearchRequestHandler
 
