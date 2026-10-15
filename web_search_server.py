@@ -25,6 +25,7 @@ import sys
 import time
 import threading
 import hmac
+from datetime import timezone
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from typing import Any
 
@@ -46,7 +47,6 @@ def _check_rate_limit(client_ip: str) -> bool:
         return False
     _request_counts[client_ip].append(now)
     return True
-MAX_REQUESTS_PER_MINUTE = 30  # 每 IP 每分钟最大请求数
 
 class SearchRequestHandler(BaseHTTPRequestHandler):
     """处理搜索请求的 HTTP 处理器"""
