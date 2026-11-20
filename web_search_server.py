@@ -56,6 +56,7 @@ class SearchRequestHandler(BaseHTTPRequestHandler):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         """初始化处理器，将 request_log 作为实例变量避免跨实例污染"""
         self.request_log: list[dict[str, Any]] = []
+        self._max_log_size: int = 1000  # 防止长期运行内存无限增长
         super().__init__(*args, **kwargs)
 
     def log_message(self, format: str, *args: Any) -> None:
