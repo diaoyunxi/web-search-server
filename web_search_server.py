@@ -1,4 +1,3 @@
-from datetime import timezone
 #!/usr/bin/env python3
 """
 Anthropic Messages API 兼容的搜索服务器
@@ -14,6 +13,9 @@ Anthropic Messages API 兼容的搜索服务器
     SEARCH_SERVER_HOST - 绑定地址，默认 127.0.0.1（仅本机访问）
     SEARCH_SERVER_PORT - 端口号，默认 8000
 """
+from collections import defaultdict
+from datetime import timezone
+import time as _time
 
 import argparse
 import json
@@ -33,8 +35,6 @@ DEFAULT_CORS_ORIGIN = os.environ.get("SEARCH_SERVER_CORS_ORIGIN", "*")
 
 
 # === Rate Limiting ===
-import time as _time
-from collections import defaultdict
 
 MAX_REQUESTS_PER_MINUTE = 30  # 每 IP 每分钟最大请求数
 _request_counts: dict[str, list[float]] = defaultdict(list)
@@ -99,25 +99,25 @@ class SearchRequestHandler(BaseHTTPRequestHandler):
                 "supported_tools": ["web_search_20250305"]
             })
         elif self.path == "/log":
-            with self.log_lock:
             # Require authentication for sensitive endpoints (CWE-306)
             if not self._check_auth():
                 self._send_json_response(401, {"error": "Unauthorized"})
                 return
+            with self.log_lock:
                 self._send_json_response(200, {
                     "total_requests": len(self.request_log),
                     "requests": self.request_log[-20:]
                 })
         elif self.path == "/stats":
-            with self.log_lock:
             # Require authentication for sensitive endpoints (CWE-306)
             if not self._check_auth():
                 self._send_json_response(401, {"error": "Unauthorized"})
                 return
+            with self.log_lock:
                 self._send_json_response(200, {
                     "total_requests": len(self.request_log),
                     "api_key_set": bool(getattr(self.server, "api_key", "")),
-                    "endpoint": "/messages"
+                    "endpoint": "/messages",
                 })
         else:
             self._send_json_response(404, {"error": "Not found"})
@@ -156,15 +156,15 @@ class SearchRequestHandler(BaseHTTPRequestHandler):
         }
         with self.log_lock:
             self.request_log.append({
-            # 防止长期运行内存无限增长
-            if len(self.request_log) > self._max_log_size:
-                self.request_log = self.request_log[-self._max_log_size:]
                 "timestamp": time.time(),
                 "method": "POST",
                 "path": "/messages",
                 "headers": sanitized_headers,
-                "body": request_data
+                "body": request_data,
             })
+            # 防止长期运行内存无限增长
+            if len(self.request_log) > self._max_log_size:
+                self.request_log = self.request_log[-self._max_log_size:]
 
         # 处理请求
         try:
